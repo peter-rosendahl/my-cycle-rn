@@ -22,54 +22,67 @@ import {
 import {
   Colors,
   DebugInstructions,
-  Header,
   LearnMoreLinks,
   ReloadInstructions,
 } from 'react-native/Libraries/NewAppScreen';
+import Header from './components/Header';
+import DatePrompt from './components/DatePrompt';
 
-const Section: React.FC<{
-  title: string;
-}> = ({children, title}) => {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-};
+// const Section: React.FC<{
+//   title: string;
+// }> = ({children, title}) => {
+//   const isDarkMode = useColorScheme() === 'dark';
+//   return (
+//     <View style={styles.sectionContainer}>
+//       <Text
+//         style={[
+//           styles.sectionTitle,
+//           {
+//             color: isDarkMode ? Colors.white : Colors.black,
+//           },
+//         ]}>
+//         {title}
+//       </Text>
+//       <Text
+//         style={[
+//           styles.sectionDescription,
+//           {
+//             color: isDarkMode ? Colors.light : Colors.dark,
+//           },
+//         ]}>
+//         {children}
+//       </Text>
+//     </View>
+//   );
+// };
 
 const App = () => {
   const isDarkMode = useColorScheme() === 'dark';
 
   const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
+    backgroundColor: isDarkMode ? Colors.lighter : Colors.lighter,
+    flex: 1
   };
+
+  const onStartDateConfirmed = (value: string) => {
+    console.log(value);
+  }
 
   return (
     <SafeAreaView style={backgroundStyle}>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+      {/* <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} /> */}
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         style={backgroundStyle}>
-        <Header />
-        <View
+        <Header title="My Cycle" />
+        <View style={intro.wrapper}>
+          {/* <Text style={intro.description}>Please enter the start date of your period:</Text> */}
+          <DatePrompt 
+            description='Please enter the start date of your period:'
+            buttonText='Confirm'
+            onConfirmed={onStartDateConfirmed} />
+        </View>
+        {/* <View
           style={{
             backgroundColor: isDarkMode ? Colors.black : Colors.white,
           }}>
@@ -87,11 +100,26 @@ const App = () => {
             Read the docs to discover what to do next:
           </Section>
           <LearnMoreLinks />
-        </View>
+        </View> */}
       </ScrollView>
     </SafeAreaView>
   );
 };
+
+const intro = StyleSheet.create({
+  wrapper: {
+    flex: 1,
+    display: "flex",
+    flexDirection: "column",
+    flexGrow: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#ffffff"
+  },
+  description: {
+    color: "#333333"
+  }
+})
 
 const styles = StyleSheet.create({
   sectionContainer: {
