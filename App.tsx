@@ -8,7 +8,7 @@
  * @format
  */
 
-import React from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   SafeAreaView,
   ScrollView,
@@ -25,8 +25,11 @@ import {
   LearnMoreLinks,
   ReloadInstructions,
 } from 'react-native/Libraries/NewAppScreen';
+
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Header from './components/Header';
-import DatePrompt from './components/DatePrompt';
+import Prologue from './components/PrologueDisplay';
+import MainDateDisplay from './components/MainDateDisplay';
 
 // const Section: React.FC<{
 //   title: string;
@@ -57,6 +60,10 @@ import DatePrompt from './components/DatePrompt';
 // };
 
 const App = () => {
+
+  const [isStartDateCreated, setIsStartDateCreated] = useState(false);
+  const [startDate, setStartDate] = useState<Date>();
+
   const isDarkMode = useColorScheme() === 'dark';
 
   const backgroundStyle = {
@@ -64,62 +71,63 @@ const App = () => {
     flex: 1
   };
 
-  const onStartDateConfirmed = (value: string) => {
-    console.log(value);
+  const onStartDateConfirmed = (value: Date) => {
+    storeStartDate(value).then(result => {
+      setStartDate(value);
+      setIsStartDateCreated(true);
+    });  
   }
+
+  const onReset = () => {
+    readStartDate().then(result => {
+      console.log('onReset.', result);
+    })
+    setStartDate(new Date());
+    setIsStartDateCreated(false);
+  }
+
+  const storeStartDate = async(value: Date) => {
+    try {
+      const jsonValue = JSON.stringify(value)
+      console.log('storeStartDate: value to storage: ', jsonValue);
+      return await AsyncStorage.setItem('@start_date', jsonValue);
+    } catch (e) {
+      // saving error
+      console.log('storeStartDate: error', e);
+    }
+  }
+
+  const readStartDate = async() => {
+    try {
+      return await AsyncStorage.getItem('@storage_Key');
+    } catch(e) {
+      // error reading value
+      console.log('readStartDate: error', e);
+    }
+  }
+
+  useEffect(() => {
+    readStartDate().then(result => {
+      console.log('result', result);
+      if (result != undefined) {
+        const date = new Date(result);
+        setStartDate(date);
+      }
+    });
+  }, []);
 
   return (
     <SafeAreaView style={backgroundStyle}>
-      {/* <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} /> */}
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
         <Header title="My Cycle" />
-        <View style={intro.wrapper}>
-          {/* <Text style={intro.description}>Please enter the start date of your period:</Text> */}
-          <DatePrompt 
-            description='Please enter the start date of your period:'
-            buttonText='Confirm'
-            onConfirmed={onStartDateConfirmed} />
-        </View>
-        {/* <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View> */}
-      </ScrollView>
+        {!isStartDateCreated && 
+          <Prologue onStartDateConfirmed={onStartDateConfirmed}></Prologue>
+        }
+        {isStartDateCreated && startDate != undefined &&
+          <MainDateDisplay startDate={startDate} onNewStartDate={onReset}></MainDateDisplay>
+        }
     </SafeAreaView>
   );
 };
-
-const intro = StyleSheet.create({
-  wrapper: {
-    flex: 1,
-    display: "flex",
-    flexDirection: "column",
-    flexGrow: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#ffffff"
-  },
-  description: {
-    color: "#333333"
-  }
-})
 
 const styles = StyleSheet.create({
   sectionContainer: {

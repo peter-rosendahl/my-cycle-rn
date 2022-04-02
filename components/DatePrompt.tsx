@@ -6,19 +6,25 @@ import {
     StyleSheet,
     TouchableOpacity
 } from 'react-native';
-// import DatePicker from 'react-native-datepicker';
+import DatePicker from 'react-native-date-picker';
+import { buttonStyle } from '../styles';
 
-const DatePrompt: React.FC<{description: string, buttonText:string, onConfirmed: (date: string) => void}> = ({description, buttonText, onConfirmed}) => {
+const DatePrompt: React.FC<{description: string, buttonText:string, onConfirmed: (date: Date) => void}> = ({description, buttonText, onConfirmed}) => {
 
-    const [date, setDate] = useState('');
+    const [date, setDate] = useState(new Date());
+    const [open, setOpen] = useState(false);
 
     return (
         <View style={style.wrapper}>
             <Text style={style.description}>{description}</Text>
-            {/* <DatePicker style={style.dateInput}></DatePicker> */}
-            <TextInput multiline={true} onChangeText={(e) => setDate(e)} style={style.dateInput} />
-            <TouchableOpacity style={style.button} onPress={(e) => onConfirmed(date)}>
-                <Text style={style.buttonText}>{buttonText}</Text>
+            <DatePicker 
+                style={style.dateInput}
+                date={date}
+                mode="date"
+                onDateChange={setDate} />
+            {/* <TextInput multiline={true} onChangeText={(e) => setDate(e)} style={style.dateInput} /> */}
+            <TouchableOpacity style={buttonStyle.primaryBtn} onPress={(e) => onConfirmed(date)}>
+                <Text style={buttonStyle.buttonText}>{buttonText}</Text>
             </TouchableOpacity>
         </View>
     )
@@ -40,21 +46,7 @@ const style = StyleSheet.create({
         width: 220,
         height: 35,
         padding: 10,
-        margin: 25,
-        color: "#333333"
-    },
-    button: {
-        backgroundColor: "#DEC4FF",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        width: 120,
-        height: 35,
-        borderRadius: 50,
-        elevation: 4
-    },
-    buttonText: {
-        color: "#333333"
+        margin: 25
     }
 })
 

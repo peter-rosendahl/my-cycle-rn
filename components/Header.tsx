@@ -18,8 +18,8 @@ const style = StyleSheet.create({
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#ffffff",
-    height: 50
+    backgroundColor: "#ffdffd",
+    height: 100
   },
   title: {
     textAlign: "center",
