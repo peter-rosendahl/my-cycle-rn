@@ -29,6 +29,8 @@ build/
 local.properties
 *.iml
 *.hprof
+android/app/my-cycle-key.keystore
+android/gradle/gradle.properties
 
 # node.js
 #
@@ -36,6 +38,7 @@ node_modules/
 npm-debug.log
 yarn-error.log
 package-lock.json
+my-cycle-key.keystore
 
 # BUCK
 buck-out/

@@ -18,7 +18,7 @@ const style = StyleSheet.create({
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#ffdffd",
+    backgroundColor: "#ffffff",
     height: 100
   },
   title: {
