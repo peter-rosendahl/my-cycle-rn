@@ -16,6 +16,7 @@ const Header: React.FC<{title: string}> = ({title}) => {
 const style = StyleSheet.create({
   wrapper: {
     display: "flex",
+    flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#ffffff",

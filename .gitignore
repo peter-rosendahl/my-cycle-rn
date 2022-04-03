@@ -39,6 +39,7 @@ npm-debug.log
 yarn-error.log
 package-lock.json
 my-cycle-key.keystore
+android/app/google-services.json
 
 # BUCK
 buck-out/

@@ -17,6 +17,7 @@ import {
   Text,
   useColorScheme,
   View,
+  TouchableOpacity
 } from 'react-native';
 
 import {
@@ -26,10 +27,19 @@ import {
   ReloadInstructions,
 } from 'react-native/Libraries/NewAppScreen';
 
+import auth, {FirebaseAuthTypes} from '@react-native-firebase/auth';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Header from './components/Header';
 import Prologue from './components/PrologueDisplay';
 import MainDateDisplay from './components/MainDateDisplay';
+
+
+
+GoogleSignin.configure({
+  webClientId: "888189098954-hjuhcb54ovpens07io0jj56jjukkna3r.apps.googleusercontent.com"
+})
 
 // const Section: React.FC<{
 //   title: string;
@@ -60,6 +70,9 @@ import MainDateDisplay from './components/MainDateDisplay';
 // };
 
 const App = () => {
+
+  const [initializing, setInitializing] = useState(true);
+  const [user, setUser] = useState<FirebaseAuthTypes.User>();
 
   const [isStartDateCreated, setIsStartDateCreated] = useState(false);
   const [startDate, setStartDate] = useState<Date>();
@@ -106,7 +119,51 @@ const App = () => {
     }
   }
 
+  const listenToAuthentication = () => {
+    console.log('listenToAuthentication: In function...');
+    const subscriber = auth().onAuthStateChanged(onAuthStateChanged);
+    return subscriber; // unsubscribe on unmount
+  }
+
+  const onGoogleSigninPressed = () => {
+    signInWithGoogle()
+    .then(userCredential => {
+      console.log('onGoogleSigninPressed: signed in success.', userCredential);
+    })
+    .catch(error => {
+      console.log('onGoogleSigninPressed: error occured', error);
+    })
+  }
+
+  const signOut = () => {
+    auth().signOut().then(() => {
+      setUser(undefined);
+    });
+  }
+
+  const signInWithGoogle = async() => {
+    // Get the users ID token
+    console.log('signInWithGoogle: Attempting to signin...');
+    const { idToken } = await GoogleSignin.signIn();
+
+    console.log('signInWithGoogle: Got idToken', idToken);
+    // Create a Google credential with the token
+    const googleCredential = auth.GoogleAuthProvider.credential(idToken);
+
+    console.log('signInWithGoogle: signing in with credential', googleCredential);
+    // Sign-in the user with the credential
+    return auth().signInWithCredential(googleCredential);
+  }
+
+  function onAuthStateChanged(user: any) {
+    console.log('onAuthStateChanged: In function', user);
+    setUser(user);
+    if (initializing) setInitializing(false);
+  }
+
   useEffect(() => {
+    console.log('starting', user);
+    listenToAuthentication();
     readStartDate().then(result => {
       console.log('result', result);
       if (result != undefined) {
@@ -119,6 +176,21 @@ const App = () => {
   return (
     <SafeAreaView style={backgroundStyle}>
         <Header title="My Cycle" />
+        <View style={styles.signInSection}>
+          {user == null && 
+            <TouchableOpacity style={styles.googleButton} onPress={onGoogleSigninPressed}>
+              <Text style={styles.googleButtonText}>Sign in with Google</Text>
+            </TouchableOpacity>
+          }
+          {user != undefined && 
+            <View>
+              <Text style={styles.googleButtonText}>Signed in as: {user.displayName}</Text>
+              <TouchableOpacity style={styles.googleButton} onPress={signOut}>
+                <Text style={styles.googleButtonText}>Sign out</Text>
+              </TouchableOpacity>
+            </View>
+          }
+        </View>
         {!isStartDateCreated && 
           <Prologue onStartDateConfirmed={onStartDateConfirmed}></Prologue>
         }
@@ -146,6 +218,28 @@ const styles = StyleSheet.create({
   highlight: {
     fontWeight: '700',
   },
+  signInSection: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "flex-start",
+    backgroundColor: "#ffffff",
+    height: 100
+  },
+  googleButton: {
+    borderRadius: 25,
+    marginTop: 25,
+    backgroundColor: "#FFFFFF",
+    elevation: 4,
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    width: 220,
+    height: 48
+  },
+  googleButtonText: {
+    color: "#333333"
+  }
 });
 
 export default App;
