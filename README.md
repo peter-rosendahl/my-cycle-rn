@@ -3,6 +3,10 @@
 
 ## Changelog
 
+### [1.0.0.02] - 04/04/2022
+- Added Firestore setup,
+- Added basic setup for user collection and user/currentCycle.
+
 ### [1.0.0.01] - 03/04/2022
 - Added Google sign-in and sign-out (needs repositioning in design).
 

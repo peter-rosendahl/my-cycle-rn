@@ -34,6 +34,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Header from './components/Header';
 import Prologue from './components/PrologueDisplay';
 import MainDateDisplay from './components/MainDateDisplay';
+import { CycleRepository } from './core/domain/CycleRepository';
+import { ICycle } from './core/entities/CycleEntity';
 
 
 
@@ -79,6 +81,8 @@ const App = () => {
 
   const isDarkMode = useColorScheme() === 'dark';
 
+  const cycleRepo = new CycleRepository();
+
   const backgroundStyle = {
     backgroundColor: isDarkMode ? Colors.lighter : Colors.lighter,
     flex: 1
@@ -92,37 +96,50 @@ const App = () => {
   }
 
   const onReset = () => {
-    readStartDate().then(result => {
-      console.log('onReset.', result);
-    })
-    setStartDate(new Date());
-    setIsStartDateCreated(false);
+    if (user != undefined) {
+      // setStartDate(new Date());
+      setIsStartDateCreated(false);
+    }
   }
 
   const storeStartDate = async(value: Date) => {
-    try {
-      const jsonValue = JSON.stringify(value)
-      console.log('storeStartDate: value to storage: ', jsonValue);
-      return await AsyncStorage.setItem('@start_date', jsonValue);
-    } catch (e) {
-      // saving error
-      console.log('storeStartDate: error', e);
+    if (user != undefined) {
+      return cycleRepo.startCurrentCycle(user.uid, value);
     }
   }
 
-  const readStartDate = async() => {
-    try {
-      return await AsyncStorage.getItem('@storage_Key');
-    } catch(e) {
-      // error reading value
-      console.log('readStartDate: error', e);
-    }
+  const readStartDate = async(user: FirebaseAuthTypes.User) => {
+      return cycleRepo.getCurrentCycle(user.uid);
   }
 
   const listenToAuthentication = () => {
     console.log('listenToAuthentication: In function...');
     const subscriber = auth().onAuthStateChanged(onAuthStateChanged);
     return subscriber; // unsubscribe on unmount
+  }
+
+  function onAuthStateChanged(user: any) {
+    console.log('onAuthStateChanged: In function', user);
+    setUser(user);
+    readStartDate(user)
+    .then(result => {
+      console.log('result from collection', result);
+      if (result != undefined && result.exists) {
+        const currentCycle = result.data();
+        if (currentCycle) {
+          setStartDate(currentCycle.startDate.toDate());
+          setIsStartDateCreated(true);
+        }
+      }
+    })
+    // .then(result => {
+    //   console.log('result', result);
+    //   if (result != undefined) {
+    //     const date = new Date(result);
+    //     setStartDate(date);
+    //   }
+    // });
+    if (initializing) setInitializing(false);
   }
 
   const onGoogleSigninPressed = () => {
@@ -133,12 +150,6 @@ const App = () => {
     .catch(error => {
       console.log('onGoogleSigninPressed: error occured', error);
     })
-  }
-
-  const signOut = () => {
-    auth().signOut().then(() => {
-      setUser(undefined);
-    });
   }
 
   const signInWithGoogle = async() => {
@@ -155,22 +166,15 @@ const App = () => {
     return auth().signInWithCredential(googleCredential);
   }
 
-  function onAuthStateChanged(user: any) {
-    console.log('onAuthStateChanged: In function', user);
-    setUser(user);
-    if (initializing) setInitializing(false);
+  const signOut = () => {
+    auth().signOut().then(() => {
+      setUser(undefined);
+    });
   }
 
   useEffect(() => {
     console.log('starting', user);
     listenToAuthentication();
-    readStartDate().then(result => {
-      console.log('result', result);
-      if (result != undefined) {
-        const date = new Date(result);
-        setStartDate(date);
-      }
-    });
   }, []);
 
   return (
