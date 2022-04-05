@@ -76,6 +76,7 @@ const App = () => {
   const [initializing, setInitializing] = useState(true);
   const [user, setUser] = useState<FirebaseAuthTypes.User>();
 
+  const [currentCycle, setCurrentCycle] = useState<ICycle>();
   const [isStartDateCreated, setIsStartDateCreated] = useState(false);
   const [startDate, setStartDate] = useState<Date>();
 
@@ -90,9 +91,29 @@ const App = () => {
 
   const onStartDateConfirmed = (value: Date) => {
     storeStartDate(value).then(result => {
+      const cycle: ICycle = {startDate: value, endDate: null, periodEndDate: null};
+      setCurrentCycle(cycle);
       setStartDate(value);
       setIsStartDateCreated(true);
     });  
+  }
+
+  const onPeriodStopped = (date: Date) => {
+    console.log('onPeriodStopped', date, user, currentCycle);
+    if (user != undefined) {
+      if (currentCycle != undefined) {
+        const updatedCycle: ICycle = {...currentCycle};
+        updatedCycle.periodEndDate = date;
+        setCurrentCycle(updatedCycle);
+        cycleRepo.updateCurrentCycle(user.uid, updatedCycle)
+          .then(result => {
+            console.log('onPeriodStopped: success', result);
+          })
+          .catch(error => {
+            console.log('onPeriodStopped: error occured', error);
+          })
+      }
+    }
   }
 
   const onReset = () => {
@@ -126,8 +147,15 @@ const App = () => {
       console.log('result from collection', result);
       if (result != undefined && result.exists) {
         const currentCycle = result.data();
-        if (currentCycle) {
+        if (currentCycle != undefined) {
+          const cycle: any = {...currentCycle};
+          cycle.startDate = currentCycle.startDate.toDate();
+          if (cycle.periodEndDate != undefined) {
+            cycle.periodEndDate = currentCycle.periodEndDate.toDate();
+          }
+
           setStartDate(currentCycle.startDate.toDate());
+          setCurrentCycle(cycle);
           setIsStartDateCreated(true);
         }
       }
@@ -198,8 +226,12 @@ const App = () => {
         {!isStartDateCreated && 
           <Prologue onStartDateConfirmed={onStartDateConfirmed}></Prologue>
         }
-        {isStartDateCreated && startDate != undefined &&
-          <MainDateDisplay startDate={startDate} onNewStartDate={onReset}></MainDateDisplay>
+        {isStartDateCreated && currentCycle != undefined && user != undefined &&
+          <MainDateDisplay 
+            uid={user.uid}
+            currentCycle={currentCycle} 
+            onNewStartDate={onReset} 
+            onPeriodStopped={onPeriodStopped}></MainDateDisplay>
         }
     </SafeAreaView>
   );

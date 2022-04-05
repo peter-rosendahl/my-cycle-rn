@@ -3,6 +3,10 @@
 
 ## Changelog
 
+### [1.0.0.03] - 05/04/2022
+- Added Ovulating and SpotBleeding buttons,
+- Added quick function to add records to DB (needs overlay).
+
 ### [1.0.0.02] - 04/04/2022
 - Added Firestore setup,
 - Added basic setup for user collection and user/currentCycle.

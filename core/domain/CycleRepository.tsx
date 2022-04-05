@@ -1,5 +1,5 @@
 import firestore from '@react-native-firebase/firestore';
-import { ICycle } from '../entities/CycleEntity';
+import { ICycle, IDateRecord } from '../entities/CycleEntity';
 
 
 export class CycleRepository {
@@ -8,8 +8,7 @@ export class CycleRepository {
         return await this.getUserDoc(uid).collection('currentCycle').doc('cycle').set({
             startDate: cycleStartDate,
             periodEndDate: '',
-            endDate: '',
-            records: []
+            endDate: ''
         });
     }
 
@@ -19,6 +18,14 @@ export class CycleRepository {
 
     updateCurrentCycle = async(uid: string, currentCycle: ICycle) => {
         return await this.getUserDoc(uid).collection('currentCycle').doc('cycle').update(currentCycle);
+    }
+
+    getCycleRecords = async(uid: string) => {
+        return await this.getUserDoc(uid).collection('currentCycle').doc('cycle').collection('dateRecords').get();
+    }
+
+    addRecordToCycle = async(uid: string, index: number, record: IDateRecord) => {
+        return await this.getUserDoc(uid).collection('currentCycle').doc('cycle').collection('dateRecords').doc(index.toString()).set(record);
     }
 
     addCycleToHistory = async(uid: string, index: number, cycle: ICycle) => {
