@@ -5,7 +5,8 @@ import {
     StyleSheet,
     TouchableOpacity,
     ScrollView,
-    Modal
+    Modal,
+    TouchableWithoutFeedback
 } from 'react-native';
 import { CycleRepository } from '../core/domain/CycleRepository';
 import { ICycle, IDateRecord, RecordType } from '../core/entities/CycleEntity';
@@ -63,7 +64,8 @@ const modalStyle = StyleSheet.create({
         flex: 1,
         justifyContent: "center",
         alignItems: "center",
-        marginTop: 22
+        marginTop: 22,
+        backgroundColor: "#00000099"
     },
     modalWrapper: {
         width: 300,
@@ -109,21 +111,21 @@ const MainDateDisplay: React.FC<MainDateProps> = ({uid, currentCycle, onNewStart
         }
     }
 
-    const notifyOvulation = () => {
+    const notifyOvulation = (dateValue: Date) => {
         console.log('notifyOvulation');
         setModalDisplayed("Ovulation");
         const record: IDateRecord = {
-            recordDate: new Date(),
+            recordDate: dateValue,
             recordType: "Ovulation"
         }
         addRecordToCycle(record);
     }
 
-    const notifySpotBleed = () => {
+    const notifySpotBleed = (dateValue: Date) => {
         console.log('notifySpotBleed');
         setModalDisplayed("Spot bleed");
         const record: IDateRecord = {
-            recordDate: new Date(),
+            recordDate: dateValue,
             recordType: "Spot bleed"
         }
         addRecordToCycle(record);
@@ -163,6 +165,15 @@ const MainDateDisplay: React.FC<MainDateProps> = ({uid, currentCycle, onNewStart
             }
             case "newCycle": {
                 onNewStartDate(value);
+                break;
+            }
+            case "Ovulation": {
+                notifyOvulation(value);
+                break;
+            }
+            case "Spot bleed": {
+                notifySpotBleed(value);
+                break;
             }
         }
         setModalDisplayed(undefined);
@@ -178,12 +189,12 @@ const MainDateDisplay: React.FC<MainDateProps> = ({uid, currentCycle, onNewStart
                     <Text style={[styles.descriptionText, styles.smaller]}>(<Text style={{fontWeight: "900"}}>{daysFromPeriodStopped}</Text> days since your period stopped)</Text>
                 }
                 <Text style={[styles.descriptionText, styles.pBottom, styles.smaller]}>Current cycle started {currentCycle.startDate.toDateString()}</Text>
-                {currentCycle.periodEndDate != undefined &&
+                {currentCycle.periodEndDate != undefined && uid != undefined &&
                     <View>
-                        <TouchableOpacity style={[buttonStyle.primaryBtn, {marginBottom: 10}]} onPress={notifyOvulation}>
+                        <TouchableOpacity style={[buttonStyle.primaryBtn, {marginBottom: 10}]} onPress={() => openModal('Ovulation')}>
                             <Text style={buttonStyle.buttonText}>Ovulating</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={[buttonStyle.primaryBtn, {marginBottom: 10}]} onPress={notifySpotBleed}>
+                        <TouchableOpacity style={[buttonStyle.primaryBtn, {marginBottom: 10}]} onPress={() => openModal('Spot bleed')}>
                             <Text style={buttonStyle.buttonText}>Spot bleeding</Text>
                         </TouchableOpacity>
                     </View>
@@ -202,9 +213,9 @@ const MainDateDisplay: React.FC<MainDateProps> = ({uid, currentCycle, onNewStart
                 }
             </View>
             <Modal 
-                animationType='slide'
+                animationType='fade'
                 transparent={true}
-                visible={modalDisplayed == "Ovulation" || modalDisplayed == "Spot bleed"}>
+                visible={false}>
                     <View style={modalStyle.centeredView}>
                         <View style={modalStyle.modalWrapper}>
                             <MessagePrompt
@@ -215,22 +226,30 @@ const MainDateDisplay: React.FC<MainDateProps> = ({uid, currentCycle, onNewStart
                     </View>
             </Modal>
             <Modal
-                animationType='slide'
+                animationType='fade'
                 transparent={true}
-                visible={modalDisplayed == "periodStopped" || modalDisplayed == "newCycle"}>
-                    <View style={modalStyle.centeredView}>
-                        <View style={modalStyle.modalWrapper}>
-                            <DatePrompt 
-                                buttonText='Confirm'
-                                description={
-                                    modalDisplayed == "Temperature" 
-                                    ? 'Please enter your temperature' 
-                                    : modalDisplayed == "periodStopped"
+                visible={
+                    modalDisplayed == "periodStopped" || 
+                    modalDisplayed == "newCycle" ||
+                    modalDisplayed == "Ovulation" ||
+                    modalDisplayed == "Spot bleed"}>
+                    <TouchableOpacity style={modalStyle.centeredView} onPress={() => setModalDisplayed(undefined)}>
+                        <TouchableWithoutFeedback>
+                            <View style={modalStyle.modalWrapper}>
+                                <DatePrompt 
+                                    buttonText='Confirm'
+                                    description={
+                                        modalDisplayed == "periodStopped"
                                         ? 'Please confirm the date where your period stopped'
-                                        : 'Please confirm the date where your new cycle started'}
-                                onConfirmed={onDateModalConfirmed}/>
-                        </View>
-                    </View>
+                                        : modalDisplayed == "newCycle"
+                                            ? 'Please confirm the date where your new cycle started'
+                                            : modalDisplayed == "Ovulation"
+                                                ? 'Please confirm the date where you have been ovulating'
+                                                : 'Please confirm the date where you have experienced spot bleeding'}
+                                    onConfirmed={onDateModalConfirmed}/>
+                            </View>
+                        </TouchableWithoutFeedback>
+                    </TouchableOpacity>
             </Modal>
         </View>
     )

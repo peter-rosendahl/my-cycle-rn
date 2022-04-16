@@ -158,6 +158,8 @@ const App = () => {
             })
         })
     } else if (currentCycle != undefined) {
+      onStartDateConfirmed(newStartDate);
+    } else {
       setIsStartDateCreated(false);
     }
   }
