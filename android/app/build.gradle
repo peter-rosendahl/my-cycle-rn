@@ -135,8 +135,8 @@ android {
         applicationId "dk.peterrosendahl.mycycle"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 10001
-        versionName "1.0.1"
+        versionCode 10002
+        versionName "1.0.2"
     }
     splits {
         abi {
