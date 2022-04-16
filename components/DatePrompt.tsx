@@ -38,7 +38,9 @@ const style = StyleSheet.create({
         alignItems: "center"
     },
     description: {
-        color: "#666666"
+        color: "#666666",
+        marginBottom: 20,
+        textAlign: "center"
     },
     dateInput: {
         elevation: 4,

@@ -35,7 +35,7 @@ import Header from './components/Header';
 import Prologue from './components/PrologueDisplay';
 import MainDateDisplay from './components/MainDateDisplay';
 import { CycleRepository } from './core/domain/CycleRepository';
-import { ICycle } from './core/entities/CycleEntity';
+import { ICycle, IDateRecord } from './core/entities/CycleEntity';
 
 
 
@@ -75,6 +75,7 @@ const App = () => {
 
   const [initializing, setInitializing] = useState(true);
   const [user, setUser] = useState<FirebaseAuthTypes.User>();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   const [currentCycle, setCurrentCycle] = useState<ICycle>();
   const [isStartDateCreated, setIsStartDateCreated] = useState(false);
@@ -100,11 +101,12 @@ const App = () => {
 
   const onPeriodStopped = (date: Date) => {
     console.log('onPeriodStopped', date, user, currentCycle);
-    if (user != undefined) {
-      if (currentCycle != undefined) {
-        const updatedCycle: ICycle = {...currentCycle};
-        updatedCycle.periodEndDate = date;
-        setCurrentCycle(updatedCycle);
+    if (currentCycle != undefined) {
+      const updatedCycle: ICycle = {...currentCycle};
+      updatedCycle.periodEndDate = date;
+      console.log('onPeriodStopped: Updating cycle: ', updatedCycle);
+      setCurrentCycle(updatedCycle);
+      if (user != undefined) {
         cycleRepo.updateCurrentCycle(user.uid, updatedCycle)
           .then(result => {
             console.log('onPeriodStopped: success', result);
@@ -116,9 +118,46 @@ const App = () => {
     }
   }
 
-  const onReset = () => {
-    if (user != undefined) {
+  const onReset = (newStartDate: Date) => {
+    console.log(`onReset: In function, value: ${newStartDate}`);
+    if (user != undefined && currentCycle != undefined) {
       // setStartDate(new Date());
+      // setIsStartDateCreated(false);
+      const cycleRecord: ICycle = {
+        startDate: currentCycle.startDate,
+        periodEndDate: currentCycle.periodEndDate,
+        endDate: newStartDate
+      };
+      console.log(`onReset: cycle to be stored in history: ${cycleRecord}`);
+      cycleRepo.getCycleHistory(user.uid)
+        .then(history => {
+          console.log(`onReset.getCycleHistory: history snapshot: ${history}`);
+          let cycleIndex = 0;
+          if (history != undefined && history.docs.length > 0) {
+            cycleIndex = history.docs.length;
+          }
+          cycleRepo.addCycleToHistory(user.uid, cycleIndex, cycleRecord)
+            .then(result => {
+              console.log(`onReset.addCycleToHistory: getting cycle records...`);
+              cycleRepo.getCycleRecords(user.uid).then(records => {
+                console.log(`onReset.getCycleRecords: result: ${records}`);
+                if (records != undefined && records.docs.length > 0) {
+                  records.docs.forEach((doc, recordIndex) => {
+                    const record = doc.data() as IDateRecord;
+                    cycleRepo.addDateRecordsToHistory(user.uid, cycleIndex, recordIndex, record);
+                  })
+                }
+              })
+              .finally(() => {
+                console.log('onReset.getCycleRecords.finally: clearing history...');
+                cycleRepo.clearRecords(user.uid, () => {
+                  console.log(`onReset.clearHistory: In callback function after clearing history...`);
+                  onStartDateConfirmed(newStartDate);
+                })
+              })
+            })
+        })
+    } else if (currentCycle != undefined) {
       setIsStartDateCreated(false);
     }
   }
@@ -126,11 +165,17 @@ const App = () => {
   const storeStartDate = async(value: Date) => {
     if (user != undefined) {
       return cycleRepo.startCurrentCycle(user.uid, value);
+    } else {
+      return Promise.resolve();
     }
   }
 
   const readStartDate = async(user: FirebaseAuthTypes.User) => {
+    if (user != undefined) {
       return cycleRepo.getCurrentCycle(user.uid);
+    } else {
+      return Promise.reject();
+    }
   }
 
   const listenToAuthentication = () => {
@@ -141,32 +186,32 @@ const App = () => {
 
   function onAuthStateChanged(user: any) {
     console.log('onAuthStateChanged: In function', user);
-    setUser(user);
-    readStartDate(user)
-    .then(result => {
-      console.log('result from collection', result);
-      if (result != undefined && result.exists) {
-        const currentCycle = result.data();
-        if (currentCycle != undefined) {
-          const cycle: any = {...currentCycle};
-          cycle.startDate = currentCycle.startDate.toDate();
-          if (cycle.periodEndDate != undefined) {
-            cycle.periodEndDate = currentCycle.periodEndDate.toDate();
+    if (user != undefined) {
+      if (isAuthenticated) return;
+      setIsAuthenticated(true);
+      setUser(user);
+      readStartDate(user)
+      .then(result => {
+        console.log('onAuthStateChanged.readStartDate: result from collection', result);
+        if (result != undefined && result.exists) {
+          const currentCycle = result.data();
+          if (currentCycle != undefined) {
+            const cycle: any = {...currentCycle};
+            cycle.startDate = currentCycle.startDate.toDate();
+            if (cycle.periodEndDate != undefined) {
+              cycle.periodEndDate = currentCycle?.periodEndDate?.toDate();
+            }
+  
+            console.log('onAuthStateChanged.readStartDate: Setting cycle', cycle);
+            setStartDate(currentCycle.startDate.toDate());
+            setCurrentCycle(cycle);
+            setIsStartDateCreated(true);
           }
-
-          setStartDate(currentCycle.startDate.toDate());
-          setCurrentCycle(cycle);
-          setIsStartDateCreated(true);
         }
-      }
-    })
-    // .then(result => {
-    //   console.log('result', result);
-    //   if (result != undefined) {
-    //     const date = new Date(result);
-    //     setStartDate(date);
-    //   }
-    // });
+      })
+    } else {
+      setIsAuthenticated(false);
+    }
     if (initializing) setInitializing(false);
   }
 
@@ -210,9 +255,12 @@ const App = () => {
         <Header title="My Cycle" />
         <View style={styles.signInSection}>
           {user == null && 
-            <TouchableOpacity style={styles.googleButton} onPress={onGoogleSigninPressed}>
-              <Text style={styles.googleButtonText}>Sign in with Google</Text>
-            </TouchableOpacity>
+            <View style={{maxWidth: 300, display: "flex", flexDirection: "column", justifyContent: "flex-start", alignItems: "center"}}>
+              <Text style={styles.googleButtonText}>Please sign in if you want your information to be stored online.</Text>
+              <TouchableOpacity style={styles.googleButton} onPress={onGoogleSigninPressed}>
+                <Text style={styles.googleButtonText}>Sign in with Google</Text>
+              </TouchableOpacity>
+            </View>
           }
           {user != undefined && 
             <View>
@@ -226,9 +274,9 @@ const App = () => {
         {!isStartDateCreated && 
           <Prologue onStartDateConfirmed={onStartDateConfirmed}></Prologue>
         }
-        {isStartDateCreated && currentCycle != undefined && user != undefined &&
+        {isStartDateCreated && currentCycle != undefined &&
           <MainDateDisplay 
-            uid={user.uid}
+            uid={user?.uid}
             currentCycle={currentCycle} 
             onNewStartDate={onReset} 
             onPeriodStopped={onPeriodStopped}></MainDateDisplay>
@@ -260,7 +308,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "flex-start",
     backgroundColor: "#ffffff",
-    height: 100
+    height: 150
   },
   googleButton: {
     borderRadius: 25,
@@ -274,6 +322,7 @@ const styles = StyleSheet.create({
     height: 48
   },
   googleButtonText: {
+    textAlign: "center",
     color: "#333333"
   }
 });

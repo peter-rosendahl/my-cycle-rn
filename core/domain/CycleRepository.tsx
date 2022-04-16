@@ -6,9 +6,7 @@ export class CycleRepository {
 
     startCurrentCycle = async(uid: string, cycleStartDate: Date) => {
         return await this.getUserDoc(uid).collection('currentCycle').doc('cycle').set({
-            startDate: cycleStartDate,
-            periodEndDate: '',
-            endDate: ''
+            startDate: cycleStartDate
         });
     }
 
@@ -30,6 +28,36 @@ export class CycleRepository {
 
     addCycleToHistory = async(uid: string, index: number, cycle: ICycle) => {
         return await this.getUserDoc(uid).collection("cycleHistory").doc(index.toString()).set(cycle);
+    }
+
+    addDateRecordsToHistory = async(uid: string, cycleIndex: number, recordIndex: number, record: IDateRecord) => {
+        return await this.getUserDoc(uid).collection("cycleHistory").doc(cycleIndex.toString()).collection('dateRecords').doc(recordIndex.toString()).set(record);
+    }
+
+    clearRecords = async(uid: string, callback: () => void) => {
+        this.getUserDoc(uid).collection("currentCycle").doc('cycle').collection('dateRecords').get()
+            .then(snapshot=> {
+                console.log('cycleRepo.clearHistory: got collection of dateRecords', snapshot.docs);
+                if (snapshot.docs != undefined && snapshot.docs.length > 0) {
+                    snapshot.docs.forEach((doc, index) => { 
+                        console.log(`document at scope: `, doc);
+                        doc.ref.delete().then(
+                            onSuccess=> {
+                                console.log(`dateRecord ${index} deleted`);
+                                console.log(`docs length: ${snapshot.docs.length}`);
+                                if (index == snapshot.docs.length-1) {
+                                    callback();
+                                }
+                            })})
+                    // snapshot.docs.forEach(document => {
+
+                    // })
+                } else {
+                    console.log('could not find any docs in cycleHistory');
+                    callback();
+                }
+                // Promise.all(snapshot.docs.map((doc) => doc.ref.delete()));
+            });
     }
 
     getCycleHistory = async(uid: string) => {

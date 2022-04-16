@@ -3,6 +3,12 @@
 
 ## Changelog
 
+### [1.0.0.04] - 16/04/2022
+- Added Db methods for cycleHistory,
+- Added MessagePrompt.tsx,
+- Fixed handling update changes for MainDateDisplay,
+- updated package to 1.0.1.
+
 ### [1.0.0.03] - 05/04/2022
 - Added Ovulating and SpotBleeding buttons,
 - Added quick function to add records to DB (needs overlay).
