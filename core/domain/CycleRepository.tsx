@@ -49,14 +49,10 @@ export class CycleRepository {
                                     callback();
                                 }
                             })})
-                    // snapshot.docs.forEach(document => {
-
-                    // })
                 } else {
                     console.log('could not find any docs in cycleHistory');
                     callback();
                 }
-                // Promise.all(snapshot.docs.map((doc) => doc.ref.delete()));
             });
     }
 

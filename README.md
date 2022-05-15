@@ -3,6 +3,10 @@
 
 ## Changelog
 
+### [1.0.1.05] - 15/04/2022
+- Added user symptom repository,
+- Added way for user to add symptom buttons and symptoom records to DB.
+
 ### [1.0.0.04] - 16/04/2022
 - Added Db methods for cycleHistory,
 - Added MessagePrompt.tsx,

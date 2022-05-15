@@ -9,9 +9,11 @@ import {
     TouchableWithoutFeedback
 } from 'react-native';
 import { CycleRepository } from '../core/domain/CycleRepository';
+import { SymptomRepository } from '../core/domain/SymptomRepository';
 import { ICycle, IDateRecord, RecordType } from '../core/entities/CycleEntity';
 import { buttonStyle } from "./../styles";
 import DatePrompt from './DatePrompt';
+import InputPrompt from './InputPrompt';
 import MessagePrompt from './MessagePrompt';
 
 type MainDateProps = {
@@ -31,7 +33,8 @@ const styles = StyleSheet.create({
     },
     mainContent: {
         flexGrow: 1,
-        alignItems: "center"
+        alignItems: "center",
+        paddingHorizontal: 80
     },
     bottom: {
         height: 100,
@@ -87,13 +90,17 @@ const modalStyle = StyleSheet.create({
 const MainDateDisplay: React.FC<MainDateProps> = ({uid, currentCycle, onNewStartDate, onPeriodStopped}) => {
 
     const cycleRepo = new CycleRepository();
+    const symptomRepo = new SymptomRepository();
     const dayCount = 86400000;
     const [daysFromStart, setDaysFromStart] = useState(0);
     const [daysFromPeriodStopped, setDaysFromPeriodStopped] = useState(0);
-    const [modalDisplayed, setModalDisplayed] = useState<RecordType | "periodStopped" | "newCycle" | undefined>(undefined);
+    const [modalDisplayed, setModalDisplayed] = useState<RecordType | "periodStopped" | "newCycle" | "userSymptom" | "newSymptom" | undefined>(undefined);
+    const [symptoms, setSymptoms] = useState<string[]>([]);
+    const [currentSymptom, setCurrentSymptom] = useState<string>('');
 
     useEffect(() => {
         calculateDays();
+        perpareSymptoms();
     }, [currentCycle]);
 
     const calculateDays = () => {
@@ -111,9 +118,30 @@ const MainDateDisplay: React.FC<MainDateProps> = ({uid, currentCycle, onNewStart
         }
     }
 
+    const perpareSymptoms = () => {
+        console.log('prepareSymptoms: Triggered');
+        const list: string[] = [];
+        if (uid != undefined) {
+            console.log('getting symptomList...');
+            symptomRepo.getList(uid)
+                .then(result => {
+                    console.log('result: ', result);
+                    if (result.docs.length > 0) {
+                        const userSymptoms: string[] = result.docs.map(doc => doc.data().name);
+                        console.log('prepareSymptoms: userSymptoms = ', userSymptoms);
+                        list.push(...userSymptoms);
+                        setSymptoms(list);
+                    }
+                })
+                .catch(error => {
+
+                })
+        }
+    }
+
     const notifyOvulation = (dateValue: Date) => {
         console.log('notifyOvulation');
-        setModalDisplayed("Ovulation");
+        // setModalDisplayed("Ovulation");
         const record: IDateRecord = {
             recordDate: dateValue,
             recordType: "Ovulation"
@@ -123,10 +151,20 @@ const MainDateDisplay: React.FC<MainDateProps> = ({uid, currentCycle, onNewStart
 
     const notifySpotBleed = (dateValue: Date) => {
         console.log('notifySpotBleed');
-        setModalDisplayed("Spot bleed");
+        // setModalDisplayed("Spot bleed");
         const record: IDateRecord = {
             recordDate: dateValue,
             recordType: "Spot bleed"
+        }
+        addRecordToCycle(record);
+    }
+
+    const notifySymptom = (dateValue: Date) => {
+        console.log('notifySymptom');
+        // setModalDisplayed("Spot bleed");
+        const record: IDateRecord = {
+            recordDate: dateValue,
+            recordType: currentSymptom
         }
         addRecordToCycle(record);
     }
@@ -147,13 +185,30 @@ const MainDateDisplay: React.FC<MainDateProps> = ({uid, currentCycle, onNewStart
         }
     }
 
-    const openModal = (type: RecordType | "newCycle" | "periodStopped") => {
+    const openModal = (type: RecordType | "newCycle" | "periodStopped" | "userSymptom"| "newSymptom", symptomName?: string) => {
+        if (type == "userSymptom" && symptomName != undefined) {
+            setCurrentSymptom(symptomName);
+        }
         setModalDisplayed(type);
     }
 
     const onMessageModalConfirmed = () => {
         console.log('onMessageModalConfirmed');
         setModalDisplayed(undefined);
+    }
+
+    const onNewSymptomNameConfirmed = (value: string) => {
+        if (uid != undefined) {
+            symptomRepo.addSymptom(uid, symptoms.length, value)
+                .then(result => {
+                    setModalDisplayed(undefined);
+                    perpareSymptoms();
+                })
+                .catch(error => {
+                    console.log('error', error);
+                });
+
+        }
     }
 
     const onDateModalConfirmed = (value: Date) => {
@@ -175,13 +230,18 @@ const MainDateDisplay: React.FC<MainDateProps> = ({uid, currentCycle, onNewStart
                 notifySpotBleed(value);
                 break;
             }
+            case "userSymptom": {
+                if (currentSymptom != undefined) {
+                    notifySymptom(value);
+                }
+            }
         }
         setModalDisplayed(undefined);
     }
 
     return (
         <View style={styles.wrapper}>
-            <ScrollView contentContainerStyle={styles.mainContent}>
+            <ScrollView showsVerticalScrollIndicator={true} contentContainerStyle={styles.mainContent}>
                 <Text style={[styles.descriptionText, styles.pBottom]}>You are currently</Text>
                 <Text style={styles.days}>{daysFromStart}</Text>
                 <Text style={[styles.descriptionText, styles.pTop]}>days in your current cycle</Text>
@@ -189,6 +249,19 @@ const MainDateDisplay: React.FC<MainDateProps> = ({uid, currentCycle, onNewStart
                     <Text style={[styles.descriptionText, styles.smaller]}>(<Text style={{fontWeight: "900"}}>{daysFromPeriodStopped}</Text> days since your period stopped)</Text>
                 }
                 <Text style={[styles.descriptionText, styles.pBottom, styles.smaller]}>Current cycle started {currentCycle.startDate.toDateString()}</Text>
+                {uid != undefined &&
+                    <Text style={[styles.descriptionText, styles.pBottom, styles.smaller, {fontWeight: "600"}]}>Experiencing any of these symptoms(?):</Text>
+                }
+                {currentCycle.periodEndDate == undefined && uid != undefined &&
+                    <View>
+                        <TouchableOpacity style={[buttonStyle.primaryBtn, buttonStyle.disabled, {marginBottom: 10}]} disabled={true} onPress={() => console.log('disabled button pressed.')}>
+                            <Text style={buttonStyle.buttonText}>Ovulating</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[buttonStyle.primaryBtn, buttonStyle.disabled, {marginBottom: 10}]} disabled={true} onPress={() => console.log('disabled button pressed.')}>
+                            <Text style={buttonStyle.buttonText}>Spot bleeding</Text>
+                        </TouchableOpacity>
+                    </View>
+                }
                 {currentCycle.periodEndDate != undefined && uid != undefined &&
                     <View>
                         <TouchableOpacity style={[buttonStyle.primaryBtn, {marginBottom: 10}]} onPress={() => openModal('Ovulation')}>
@@ -196,6 +269,18 @@ const MainDateDisplay: React.FC<MainDateProps> = ({uid, currentCycle, onNewStart
                         </TouchableOpacity>
                         <TouchableOpacity style={[buttonStyle.primaryBtn, {marginBottom: 10}]} onPress={() => openModal('Spot bleed')}>
                             <Text style={buttonStyle.buttonText}>Spot bleeding</Text>
+                        </TouchableOpacity>
+                    </View>
+                }
+                {uid != undefined &&
+                    <View>
+                        {symptoms.length > 0 && symptoms.map((symptom, index) => 
+                            <TouchableOpacity key={index} style={[buttonStyle.primaryBtn, {marginBottom: 10}]} onPress={() => openModal('userSymptom', symptom)}>
+                                <Text style={buttonStyle.buttonText}>{symptom}</Text>
+                            </TouchableOpacity>
+                        )}
+                        <TouchableOpacity style={[buttonStyle.primaryBtn, {marginBottom: 10}]} onPress={() => openModal('newSymptom')}>
+                            <Text style={[buttonStyle.buttonText, {fontStyle: "italic", fontWeight: "600"}]}>+ new symptom</Text>
                         </TouchableOpacity>
                     </View>
                 }
@@ -215,15 +300,18 @@ const MainDateDisplay: React.FC<MainDateProps> = ({uid, currentCycle, onNewStart
             <Modal 
                 animationType='fade'
                 transparent={true}
-                visible={false}>
-                    <View style={modalStyle.centeredView}>
-                        <View style={modalStyle.modalWrapper}>
-                            <MessagePrompt
-                                buttonText='Show cycle'
-                                description='Your cycle has been updated'
-                                onConfirmed={onMessageModalConfirmed} />
-                        </View>
-                    </View>
+                visible={modalDisplayed == "newSymptom"}>
+                    <TouchableOpacity style={modalStyle.centeredView} onPress={() => setModalDisplayed(undefined)}>
+                        <TouchableWithoutFeedback>
+                            <View style={modalStyle.modalWrapper}>
+                                <InputPrompt 
+                                    buttonText='Save'
+                                    placeholderText='My symptom'
+                                    description='Please give your symptom a name.'
+                                    onConfirmed={onNewSymptomNameConfirmed}/>
+                            </View>
+                        </TouchableWithoutFeedback>
+                    </TouchableOpacity>
             </Modal>
             <Modal
                 animationType='fade'
@@ -232,7 +320,8 @@ const MainDateDisplay: React.FC<MainDateProps> = ({uid, currentCycle, onNewStart
                     modalDisplayed == "periodStopped" || 
                     modalDisplayed == "newCycle" ||
                     modalDisplayed == "Ovulation" ||
-                    modalDisplayed == "Spot bleed"}>
+                    modalDisplayed == "Spot bleed" ||
+                    modalDisplayed == "userSymptom"}>
                     <TouchableOpacity style={modalStyle.centeredView} onPress={() => setModalDisplayed(undefined)}>
                         <TouchableWithoutFeedback>
                             <View style={modalStyle.modalWrapper}>
@@ -245,7 +334,9 @@ const MainDateDisplay: React.FC<MainDateProps> = ({uid, currentCycle, onNewStart
                                             ? 'Please confirm the date where your new cycle started'
                                             : modalDisplayed == "Ovulation"
                                                 ? 'Please confirm the date where you have been ovulating'
-                                                : 'Please confirm the date where you have experienced spot bleeding'}
+                                                : modalDisplayed == "Spot bleed"
+                                                    ? 'Please confirm the date where you have experienced spot bleeding'
+                                                    : `Please confirm the date where you have experienced the symptom: ${currentSymptom}`}
                                     onConfirmed={onDateModalConfirmed}/>
                             </View>
                         </TouchableWithoutFeedback>

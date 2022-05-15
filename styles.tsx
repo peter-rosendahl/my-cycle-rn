@@ -7,11 +7,17 @@ export const buttonStyle = StyleSheet.create({
         justifyContent: "center",
         alignItems: "center",
         width: 220,
-        height: 35,
-        borderRadius: 50,
+        // height: 35,
+        paddingVertical: 10,
+        paddingHorizontal: 10,
+        borderRadius: 20,
         elevation: 4
     },
+    disabled: {
+        backgroundColor: "#EEEEEE"
+    },
     buttonText: {
-        color: "#333333"
+        color: "#333333",
+        textAlign: "center"
     }
 })

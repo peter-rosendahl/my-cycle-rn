@@ -2,7 +2,7 @@ export type RecordType = "Temperature" | "Ovulation" | "Spot bleed";
 
 export interface IDateRecord {
     recordDate: Date;
-    recordType: RecordType;
+    recordType: RecordType | string;
     recordValue?: number;
 }
 
