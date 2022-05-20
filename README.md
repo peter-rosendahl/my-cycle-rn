@@ -3,6 +3,13 @@
 
 ## Changelog
 
+### [1.0.3.01] - 20/04/2022
+- Moved Authentication to separate component.
+- Redesigned authentication,
+- Added icons for all buttons.
+- Store number of days for all records in DB.
+- Released to v1.0.4.
+
 ### [1.0.1.05] - 15/04/2022
 - Added user symptom repository,
 - Added way for user to add symptom buttons and symptoom records to DB.

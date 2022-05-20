@@ -36,6 +36,7 @@ import Prologue from './components/PrologueDisplay';
 import MainDateDisplay from './components/MainDateDisplay';
 import { CycleRepository } from './core/domain/CycleRepository';
 import { ICycle, IDateRecord } from './core/entities/CycleEntity';
+import Auth from './components/Auth';
 
 
 
@@ -99,11 +100,12 @@ const App = () => {
     });  
   }
 
-  const onPeriodStopped = (date: Date) => {
+  const onPeriodStopped = (date: Date, daysInCycle: number) => {
     console.log('onPeriodStopped', date, user, currentCycle);
     if (currentCycle != undefined) {
       const updatedCycle: ICycle = {...currentCycle};
       updatedCycle.periodEndDate = date;
+      updatedCycle.periodDuration = daysInCycle;
       console.log('onPeriodStopped: Updating cycle: ', updatedCycle);
       setCurrentCycle(updatedCycle);
       if (user != undefined) {
@@ -118,7 +120,7 @@ const App = () => {
     }
   }
 
-  const onReset = (newStartDate: Date) => {
+  const onReset = (newStartDate: Date, cycleDuration: number) => {
     console.log(`onReset: In function, value: ${newStartDate}`);
     if (user != undefined && currentCycle != undefined) {
       // setStartDate(new Date());
@@ -126,7 +128,8 @@ const App = () => {
       const cycleRecord: ICycle = {
         startDate: currentCycle.startDate,
         periodEndDate: currentCycle.periodEndDate,
-        endDate: newStartDate
+        endDate: newStartDate,
+        cycleDuration: cycleDuration
       };
       console.log(`onReset: cycle to be stored in history: ${cycleRecord}`);
       cycleRepo.getCycleHistory(user.uid)
@@ -211,35 +214,40 @@ const App = () => {
           }
         }
       })
+      .catch((error: any) => {
+        if (error.includes('denied')) {
+          signOut();
+        }
+      })
     } else {
       setIsAuthenticated(false);
     }
     if (initializing) setInitializing(false);
   }
 
-  const onGoogleSigninPressed = () => {
-    signInWithGoogle()
-    .then(userCredential => {
-      console.log('onGoogleSigninPressed: signed in success.', userCredential);
-    })
-    .catch(error => {
-      console.log('onGoogleSigninPressed: error occured', error);
-    })
-  }
+  // const onGoogleSigninPressed = () => {
+  //   signInWithGoogle()
+  //   .then(userCredential => {
+  //     console.log('onGoogleSigninPressed: signed in success.', userCredential);
+  //   })
+  //   .catch(error => {
+  //     console.log('onGoogleSigninPressed: error occured', error);
+  //   })
+  // }
 
-  const signInWithGoogle = async() => {
-    // Get the users ID token
-    console.log('signInWithGoogle: Attempting to signin...');
-    const { idToken } = await GoogleSignin.signIn();
+  // const signInWithGoogle = async() => {
+  //   // Get the users ID token
+  //   console.log('signInWithGoogle: Attempting to signin...');
+  //   const { idToken } = await GoogleSignin.signIn();
 
-    console.log('signInWithGoogle: Got idToken', idToken);
-    // Create a Google credential with the token
-    const googleCredential = auth.GoogleAuthProvider.credential(idToken);
+  //   console.log('signInWithGoogle: Got idToken', idToken);
+  //   // Create a Google credential with the token
+  //   const googleCredential = auth.GoogleAuthProvider.credential(idToken);
 
-    console.log('signInWithGoogle: signing in with credential', googleCredential);
-    // Sign-in the user with the credential
-    return auth().signInWithCredential(googleCredential);
-  }
+  //   console.log('signInWithGoogle: signing in with credential', googleCredential);
+  //   // Sign-in the user with the credential
+  //   return auth().signInWithCredential(googleCredential);
+  // }
 
   const signOut = () => {
     auth().signOut().then(() => {
@@ -254,8 +262,9 @@ const App = () => {
 
   return (
     <SafeAreaView style={backgroundStyle}>
-        <Header title="My Cycle" />
-        <View style={styles.signInSection}>
+        <Header title="My Cycle" profileName={user?.displayName} />
+        <Auth auth={auth} onSignOut={signOut} user={user} />
+        {/* <View style={styles.signInSection}>
           {user == null && 
             <View style={{maxWidth: 300, display: "flex", flexDirection: "column", justifyContent: "flex-start", alignItems: "center"}}>
               <Text style={styles.googleButtonText}>Please sign in if you want your information to be stored online.</Text>
@@ -272,7 +281,7 @@ const App = () => {
               </TouchableOpacity>
             </View>
           }
-        </View>
+        </View> */}
         {!isStartDateCreated && 
           <Prologue onStartDateConfirmed={onStartDateConfirmed}></Prologue>
         }

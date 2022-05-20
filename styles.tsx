@@ -4,6 +4,7 @@ export const buttonStyle = StyleSheet.create({
     primaryBtn: {
         backgroundColor: "#ECDDFF",
         display: "flex",
+        flexDirection: "row",
         justifyContent: "center",
         alignItems: "center",
         width: 220,

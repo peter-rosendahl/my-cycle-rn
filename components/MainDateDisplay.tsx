@@ -15,12 +15,14 @@ import { buttonStyle } from "./../styles";
 import DatePrompt from './DatePrompt';
 import InputPrompt from './InputPrompt';
 import MessagePrompt from './MessagePrompt';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+import * as Ionicon from 'react-native-vector-icons/Ionicons'
 
 type MainDateProps = {
     uid?: string,
     currentCycle: ICycle,
-    onNewStartDate: (newStartDate: Date) => void,
-    onPeriodStopped: (date: Date) => void,
+    onNewStartDate: (newStartDate: Date, cycleDuration: number) => void,
+    onPeriodStopped: (date: Date, daysInCycle: number) => void,
 }
 
 const styles = StyleSheet.create({
@@ -51,10 +53,10 @@ const styles = StyleSheet.create({
         fontSize: 16
     },
     pTop: {
-        paddingTop: 30
+        paddingTop: 16
     },
     pBottom: {
-        paddingBottom: 30
+        paddingBottom: 16
     },
     days: {
         fontSize: 40,
@@ -144,7 +146,8 @@ const MainDateDisplay: React.FC<MainDateProps> = ({uid, currentCycle, onNewStart
         // setModalDisplayed("Ovulation");
         const record: IDateRecord = {
             recordDate: dateValue,
-            recordType: "Ovulation"
+            recordType: "Ovulation",
+            daysInCycle: daysFromStart
         }
         addRecordToCycle(record);
     }
@@ -154,7 +157,8 @@ const MainDateDisplay: React.FC<MainDateProps> = ({uid, currentCycle, onNewStart
         // setModalDisplayed("Spot bleed");
         const record: IDateRecord = {
             recordDate: dateValue,
-            recordType: "Spot bleed"
+            recordType: "Spot bleed",
+            daysInCycle: daysFromStart
         }
         addRecordToCycle(record);
     }
@@ -164,7 +168,8 @@ const MainDateDisplay: React.FC<MainDateProps> = ({uid, currentCycle, onNewStart
         // setModalDisplayed("Spot bleed");
         const record: IDateRecord = {
             recordDate: dateValue,
-            recordType: currentSymptom
+            recordType: currentSymptom,
+            daysInCycle: daysFromStart
         }
         addRecordToCycle(record);
     }
@@ -215,11 +220,11 @@ const MainDateDisplay: React.FC<MainDateProps> = ({uid, currentCycle, onNewStart
         console.log(`onDateModalConfirmed: dateValue ${value}, type: ${modalDisplayed}`);
         switch (modalDisplayed) {
             case "periodStopped": {
-                onPeriodStopped(value);
+                onPeriodStopped(value, daysFromStart);
                 break;
             }
             case "newCycle": {
-                onNewStartDate(value);
+                onNewStartDate(value, daysFromStart);
                 break;
             }
             case "Ovulation": {
@@ -241,24 +246,26 @@ const MainDateDisplay: React.FC<MainDateProps> = ({uid, currentCycle, onNewStart
 
     return (
         <View style={styles.wrapper}>
+            <Text style={[styles.descriptionText, styles.pBottom]}>You are currently</Text>
+            <Text style={styles.days}>{daysFromStart}</Text>
+            <Text style={[styles.descriptionText, styles.pTop]}>days in your current cycle</Text>
+            {currentCycle.periodEndDate != undefined &&
+                <Text style={[styles.descriptionText, styles.smaller]}>(<Text style={{fontWeight: "900"}}>{daysFromPeriodStopped}</Text> days since your period stopped)</Text>
+            }
+            <Text style={[styles.descriptionText, styles.pBottom, styles.smaller]}>Current cycle started {currentCycle.startDate.toDateString()}</Text>
             <ScrollView showsVerticalScrollIndicator={true} contentContainerStyle={styles.mainContent}>
-                <Text style={[styles.descriptionText, styles.pBottom]}>You are currently</Text>
-                <Text style={styles.days}>{daysFromStart}</Text>
-                <Text style={[styles.descriptionText, styles.pTop]}>days in your current cycle</Text>
-                {currentCycle.periodEndDate != undefined &&
-                    <Text style={[styles.descriptionText, styles.smaller]}>(<Text style={{fontWeight: "900"}}>{daysFromPeriodStopped}</Text> days since your period stopped)</Text>
-                }
-                <Text style={[styles.descriptionText, styles.pBottom, styles.smaller]}>Current cycle started {currentCycle.startDate.toDateString()}</Text>
-                {uid != undefined &&
+                {/* {uid != undefined &&
                     <Text style={[styles.descriptionText, styles.pBottom, styles.smaller, {fontWeight: "600"}]}>Experiencing any of these symptoms(?):</Text>
-                }
+                } */}
                 {currentCycle.periodEndDate == undefined && uid != undefined &&
                     <View>
                         <TouchableOpacity style={[buttonStyle.primaryBtn, buttonStyle.disabled, {marginBottom: 10}]} disabled={true} onPress={() => console.log('disabled button pressed.')}>
                             <Text style={buttonStyle.buttonText}>Ovulating</Text>
+                            <Icon name="child-care" style={{color: "#333333", position: "absolute", right: 12, fontSize: 16}}></Icon>
                         </TouchableOpacity>
                         <TouchableOpacity style={[buttonStyle.primaryBtn, buttonStyle.disabled, {marginBottom: 10}]} disabled={true} onPress={() => console.log('disabled button pressed.')}>
                             <Text style={buttonStyle.buttonText}>Spot bleeding</Text>
+                            <Ionicon.default name="water" style={{color: "#333333", position: "absolute", right: 12, fontSize: 16}}></Ionicon.default>
                         </TouchableOpacity>
                     </View>
                 }
@@ -266,9 +273,11 @@ const MainDateDisplay: React.FC<MainDateProps> = ({uid, currentCycle, onNewStart
                     <View>
                         <TouchableOpacity style={[buttonStyle.primaryBtn, {marginBottom: 10}]} onPress={() => openModal('Ovulation')}>
                             <Text style={buttonStyle.buttonText}>Ovulating</Text>
+                            <Icon name="child-care" style={{color: "#333333", position: "absolute", right: 12, fontSize: 16}}></Icon>
                         </TouchableOpacity>
                         <TouchableOpacity style={[buttonStyle.primaryBtn, {marginBottom: 10}]} onPress={() => openModal('Spot bleed')}>
                             <Text style={buttonStyle.buttonText}>Spot bleeding</Text>
+                            <Ionicon.default name="water" style={{color: "#333333", position: "absolute", right: 12, fontSize: 16}}></Ionicon.default>
                         </TouchableOpacity>
                     </View>
                 }
@@ -277,10 +286,12 @@ const MainDateDisplay: React.FC<MainDateProps> = ({uid, currentCycle, onNewStart
                         {symptoms.length > 0 && symptoms.map((symptom, index) => 
                             <TouchableOpacity key={index} style={[buttonStyle.primaryBtn, {marginBottom: 10}]} onPress={() => openModal('userSymptom', symptom)}>
                                 <Text style={buttonStyle.buttonText}>{symptom}</Text>
+                                <Icon name="sentiment-very-dissatisfied" style={{color: "#333333", position: "absolute", right: 12, fontSize: 16, bottom: 12}}></Icon>
                             </TouchableOpacity>
                         )}
                         <TouchableOpacity style={[buttonStyle.primaryBtn, {marginBottom: 10}]} onPress={() => openModal('newSymptom')}>
                             <Text style={[buttonStyle.buttonText, {fontStyle: "italic", fontWeight: "600"}]}>+ new symptom</Text>
+                            <Icon name="sentiment-very-dissatisfied" style={{color: "#333333", position: "absolute", right: 12, fontSize: 16, bottom: 12}}></Icon>
                         </TouchableOpacity>
                     </View>
                 }
@@ -288,12 +299,12 @@ const MainDateDisplay: React.FC<MainDateProps> = ({uid, currentCycle, onNewStart
             <View style={styles.bottom}>
                 {currentCycle.periodEndDate == undefined && 
                     <TouchableOpacity style={buttonStyle.primaryBtn} onPress={() => openModal('periodStopped')}>
-                        <Text style={buttonStyle.buttonText}>My period stopped</Text>
+                        <Text style={[buttonStyle.buttonText, {fontWeight: "600"}]}>My period stopped</Text>
                     </TouchableOpacity>
                 }
                 {currentCycle.periodEndDate != undefined &&
                     <TouchableOpacity style={buttonStyle.primaryBtn} onPress={() => openModal('newCycle')}>
-                        <Text style={buttonStyle.buttonText}>Start new cycle</Text>
+                        <Text style={[buttonStyle.buttonText, {fontWeight: "600"}]}>Start new cycle</Text>
                     </TouchableOpacity>
                 }
             </View>

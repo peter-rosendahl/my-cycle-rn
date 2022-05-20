@@ -1,6 +1,11 @@
 apply plugin: "com.android.application"
 apply plugin: 'com.google.gms.google-services'
 
+project.ext.vectoricons = [
+    iconFontNames: [ 'MaterialIcons.ttf', 'Ionicons.ttf' ] // Name of the font files you want to copy
+]
+apply from: "../../node_modules/react-native-vector-icons/fonts.gradle"
+
 import com.android.build.OutputFile
 
 /**
@@ -135,8 +140,8 @@ android {
         applicationId "dk.peterrosendahl.mycycle"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 10003
-        versionName "1.0.3"
+        versionCode 10004
+        versionName "1.0.4"
     }
     splits {
         abi {
