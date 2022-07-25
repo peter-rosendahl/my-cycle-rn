@@ -6,7 +6,7 @@ import {
     StyleSheet,
     TouchableOpacity
 } from 'react-native';
-import { buttonStyle } from '../styles';
+import { buttonStyle } from '../core/styles/buttonStyles';
 
 const InputPrompt: React.FC<{description: string, placeholderText: string, buttonText:string, onConfirmed: (value: string) => void}> = ({description, placeholderText, buttonText, onConfirmed}) => {
 

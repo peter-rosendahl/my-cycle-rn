@@ -37,6 +37,9 @@ import MainDateDisplay from './components/MainDateDisplay';
 import { CycleRepository } from './core/domain/CycleRepository';
 import { ICycle, IDateRecord } from './core/entities/CycleEntity';
 import Auth from './components/Auth';
+import ReminderControl from './components/ReminderControl';
+import { IReminderEntity } from './core/entities/ReminderEntity';
+import { ReminderRepository } from './core/domain/ReminderRepository';
 
 
 
@@ -81,10 +84,12 @@ const App = () => {
   const [currentCycle, setCurrentCycle] = useState<ICycle>();
   const [isStartDateCreated, setIsStartDateCreated] = useState(false);
   const [startDate, setStartDate] = useState<Date>();
+  const [reminderList, setReminderList] = useState<IReminderEntity[]>();
 
   const isDarkMode = useColorScheme() === 'dark';
 
   const cycleRepo = new CycleRepository();
+  const reminderRepo = new ReminderRepository();
 
   const backgroundStyle = {
     backgroundColor: isDarkMode ? Colors.lighter : Colors.lighter,
@@ -183,6 +188,36 @@ const App = () => {
     }
   }
 
+  const readReminders = async(user: FirebaseAuthTypes.User) => {
+    if (user != undefined) {
+      return reminderRepo.getList(user.uid);
+    } else {
+      return Promise.reject();
+    }
+  }
+
+  const storeReminder = (item: IReminderEntity | null) => {
+    if (user != undefined) {
+      if (item == null) {
+        reminderRepo.removeFromIndex(user.uid, 0)
+        .then(result => {
+          console.log("reminder deleted from database");
+        })
+        .finally(() => {
+          setReminderList([]);
+        })
+      } else {
+        reminderRepo.addReminder(user.uid, item.id, item.numberOfDays)
+        .then(success => {
+          console.log('Reminder saved online');
+        })
+        .finally(() => {
+          setReminderList([item]);
+        });
+      }
+    }
+  }
+
   const listenToAuthentication = () => {
     console.log('listenToAuthentication: In function...');
     const subscriber = auth().onAuthStateChanged(onAuthStateChanged);
@@ -213,6 +248,12 @@ const App = () => {
             setIsStartDateCreated(true);
           }
         }
+        readReminders(user).then(reminderResult => {
+          if (reminderResult != undefined && reminderResult.docs.length > 0) {
+            const list: IReminderEntity[] = reminderResult.docs.map(doc => doc.data() as IReminderEntity);
+            setReminderList(list);
+          }
+        })
       })
       .catch((error: any) => {
         if (error.includes('denied')) {
@@ -263,6 +304,12 @@ const App = () => {
   return (
     <SafeAreaView style={backgroundStyle}>
         <Header title="My Cycle" profileName={user?.displayName} />
+        {user != undefined &&
+          <ReminderControl 
+            currentCycle={currentCycle} 
+            storedReminderList={reminderList} 
+            onReminderConfirmed={(item: IReminderEntity | null) => storeReminder(item)} />
+        }
         <Auth auth={auth} onSignOut={signOut} user={user} />
         {/* <View style={styles.signInSection}>
           {user == null && 

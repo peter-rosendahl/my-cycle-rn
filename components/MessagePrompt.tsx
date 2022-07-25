@@ -5,7 +5,7 @@ import {
     StyleSheet,
     TouchableOpacity
 } from 'react-native';
-import { buttonStyle } from '../styles';
+import { buttonStyle } from '../core/styles/buttonStyles';
 
 const MessagePrompt: React.FC<{description: string, buttonText:string, onConfirmed: () => void}> = ({description, buttonText, onConfirmed}) => {
 

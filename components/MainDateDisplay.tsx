@@ -11,12 +11,12 @@ import {
 import { CycleRepository } from '../core/domain/CycleRepository';
 import { SymptomRepository } from '../core/domain/SymptomRepository';
 import { ICycle, IDateRecord, RecordType } from '../core/entities/CycleEntity';
-import { buttonStyle } from "./../styles";
+import { buttonStyle } from "../core/styles/buttonStyles";
 import DatePrompt from './DatePrompt';
 import InputPrompt from './InputPrompt';
 import MessagePrompt from './MessagePrompt';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import * as Ionicon from 'react-native-vector-icons/Ionicons'
+import * as Ionicon from 'react-native-vector-icons/Ionicons';
 
 type MainDateProps = {
     uid?: string,
@@ -24,70 +24,6 @@ type MainDateProps = {
     onNewStartDate: (newStartDate: Date, cycleDuration: number) => void,
     onPeriodStopped: (date: Date, daysInCycle: number) => void,
 }
-
-const styles = StyleSheet.create({
-    wrapper: {
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        backgroundColor: "#FFFFFF"
-    },
-    mainContent: {
-        flexGrow: 1,
-        alignItems: "center",
-        paddingHorizontal: 80
-    },
-    bottom: {
-        height: 100,
-        display: "flex",
-        alignItems: "flex-end",
-        justifyContent: "flex-end",
-        marginBottom: 50
-    },
-    descriptionText: {
-        fontSize: 20,
-        color: "#666666"
-    },
-    smaller: {
-        fontSize: 16
-    },
-    pTop: {
-        paddingTop: 16
-    },
-    pBottom: {
-        paddingBottom: 16
-    },
-    days: {
-        fontSize: 40,
-        color: "#000000"
-    }
-})
-
-const modalStyle = StyleSheet.create({
-    centeredView: {
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-        marginTop: 22,
-        backgroundColor: "#00000099"
-    },
-    modalWrapper: {
-        width: 300,
-        padding: 35,
-        borderRadius: 8,
-        backgroundColor: "#ffffff",
-        alignItems: "center",
-        shadowColor: "#000",
-        shadowOffset: {
-          width: 0,
-          height: 2
-        },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-        elevation: 5
-    }
-})
 
 const MainDateDisplay: React.FC<MainDateProps> = ({uid, currentCycle, onNewStartDate, onPeriodStopped}) => {
 
@@ -250,7 +186,14 @@ const MainDateDisplay: React.FC<MainDateProps> = ({uid, currentCycle, onNewStart
             <Text style={styles.days}>{daysFromStart}</Text>
             <Text style={[styles.descriptionText, styles.pTop]}>days in your current cycle</Text>
             {currentCycle.periodEndDate != undefined &&
-                <Text style={[styles.descriptionText, styles.smaller]}>(<Text style={{fontWeight: "900"}}>{daysFromPeriodStopped}</Text> days since your period stopped)</Text>
+                <View>
+                    <TouchableOpacity disabled={uid == undefined} onPress={() => openModal('periodStopped')} style={{display: "flex", flexDirection: "row", alignItems: "center"}}>
+                        <Text style={[styles.descriptionText, styles.smaller, {textDecorationLine: "underline"}]}>(<Text style={{fontWeight: "900"}}>{daysFromPeriodStopped}</Text> days since your period stopped)</Text>
+                        { uid != undefined &&
+                            <Icon name="edit" style={{color: "#333333"}}></Icon>
+                        }
+                    </TouchableOpacity>
+                </View>
             }
             <Text style={[styles.descriptionText, styles.pBottom, styles.smaller]}>Current cycle started {currentCycle.startDate.toDateString()}</Text>
             <ScrollView showsVerticalScrollIndicator={true} contentContainerStyle={styles.mainContent}>
@@ -358,3 +301,69 @@ const MainDateDisplay: React.FC<MainDateProps> = ({uid, currentCycle, onNewStart
 }
 
 export default MainDateDisplay;
+
+
+
+const styles = StyleSheet.create({
+    wrapper: {
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        backgroundColor: "#FFFFFF"
+    },
+    mainContent: {
+        flexGrow: 1,
+        alignItems: "center",
+        paddingHorizontal: 80
+    },
+    bottom: {
+        height: 100,
+        display: "flex",
+        alignItems: "flex-end",
+        justifyContent: "flex-end",
+        marginBottom: 50
+    },
+    descriptionText: {
+        fontSize: 20,
+        color: "#666666"
+    },
+    smaller: {
+        fontSize: 16
+    },
+    pTop: {
+        paddingTop: 16
+    },
+    pBottom: {
+        paddingBottom: 16
+    },
+    days: {
+        fontSize: 40,
+        color: "#000000"
+    }
+})
+
+const modalStyle = StyleSheet.create({
+    centeredView: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+        marginTop: 0,
+        backgroundColor: "#00000099"
+    },
+    modalWrapper: {
+        width: 300,
+        padding: 35,
+        borderRadius: 8,
+        backgroundColor: "#ffffff",
+        alignItems: "center",
+        shadowColor: "#000",
+        shadowOffset: {
+          width: 0,
+          height: 2
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+        elevation: 5
+    }
+})

@@ -2,6 +2,7 @@ import { FirebaseAuthTypes } from '@react-native-firebase/auth';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import React, {useState, useEffect} from 'react';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import PushNotification from 'react-native-push-notification';
 
 import {
     StyleSheet,
@@ -62,9 +63,7 @@ const Auth: React.FC<AuthProps> = ({auth, onSignOut, user}) => {
           }
           {user != undefined && 
             <View style={{display: "flex", flexDirection: "row", alignItems: "center", height: 50}}>
-              {/* <Text style={{color: "#333333", marginLeft: 8}}>{user.displayName}</Text> */}
               <TouchableOpacity style={styles.googleButton} onPress={onSignOut}>
-                {/* <Text style={styles.googleButtonText}>Sign out</Text> */}
                 <Icon name="logout" style={styles.googleButtonText}></Icon>
               </TouchableOpacity>
             </View>
@@ -96,7 +95,8 @@ const styles = StyleSheet.create({
     },
     googleButtonText: {
       // textAlign: "center",
-      color: "#333333"
+      color: "#333333",
+      fontSize: 18
     }
   });
 

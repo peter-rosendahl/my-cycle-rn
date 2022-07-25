@@ -2,16 +2,26 @@ import React from 'react';
 import {
     View,
     Text,
+    TouchableOpacity,
+    Linking,
     StyleSheet
 } from 'react-native';
 
 const Header: React.FC<{title: string, profileName?: string | null}> = ({title, profileName}) => {
+
+  const openPrivacy = async() => {
+    await Linking.openURL("https://prmedia.dk/terms/my-cycle");
+  }
+
     return (
         <View style={style.wrapper}>
             <Text style={style.title}>{title}</Text>
             { 
               <Text style={[style.title, style.smaller, style.grey]}>({profileName || "Please sign in if you want your information to be stored online."})</Text>
             }
+            <TouchableOpacity onPress={openPrivacy}>
+              <Text style={{color: "#333333", textDecorationLine:"underline"}}>Read Privacy Policy</Text>
+            </TouchableOpacity>
         </View>
     )
 }

@@ -14,6 +14,10 @@ export const buttonStyle = StyleSheet.create({
         borderRadius: 20,
         elevation: 4
     },
+    textWrapped: {
+        flex: 1,
+        marginHorizontal: 5
+    },
     disabled: {
         backgroundColor: "#EEEEEE"
     },

@@ -7,7 +7,7 @@ import {
     TouchableOpacity
 } from 'react-native';
 import DatePicker from 'react-native-date-picker';
-import { buttonStyle } from '../styles';
+import { buttonStyle } from '../core/styles/buttonStyles';
 
 const DatePrompt: React.FC<{description: string, buttonText:string, onConfirmed: (date: Date) => void}> = ({description, buttonText, onConfirmed}) => {
 
