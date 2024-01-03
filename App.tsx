@@ -19,6 +19,7 @@ import {
   View,
   TouchableOpacity
 } from 'react-native';
+import Orientation from 'react-native-orientation-locker';
 
 import {
   Colors,
@@ -35,7 +36,7 @@ import Header from './components/Header';
 import Prologue from './components/PrologueDisplay';
 import MainDateDisplay from './components/MainDateDisplay';
 import { CycleRepository } from './core/domain/CycleRepository';
-import { ICycle, IDateRecord } from './core/entities/CycleEntity';
+import { ICycle, ICycleRead, IDateRecord } from './core/entities/CycleEntity';
 import Auth from './components/Auth';
 import ReminderControl from './components/ReminderControl';
 import { IReminderEntity } from './core/entities/ReminderEntity';
@@ -82,6 +83,9 @@ const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   const [currentCycle, setCurrentCycle] = useState<ICycle>();
+  const [displayedCycle, setDisplayedCycle] = useState<ICycle>();
+  const [cycleHistory, setCycleHistory] = useState<ICycle[]>();
+  const [isCurrentCycle, setIsCurrentCycle] = useState(true);
   const [isStartDateCreated, setIsStartDateCreated] = useState(false);
   const [startDate, setStartDate] = useState<Date>();
   const [reminderList, setReminderList] = useState<IReminderEntity[]>();
@@ -91,17 +95,16 @@ const App = () => {
   const cycleRepo = new CycleRepository();
   const reminderRepo = new ReminderRepository();
 
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.lighter : Colors.lighter,
-    flex: 1
-  };
-
   const onStartDateConfirmed = (value: Date) => {
     storeStartDate(value).then(result => {
       const cycle: ICycle = {startDate: value, endDate: null, periodEndDate: null};
       setCurrentCycle(cycle);
       setStartDate(value);
       setIsStartDateCreated(true);
+      setDisplayedCycle(cycle);
+      if (user != null) {
+        tryGetCycleHistory(user.uid, cycle);
+      }
     });  
   }
 
@@ -117,10 +120,13 @@ const App = () => {
         cycleRepo.updateCurrentCycle(user.uid, updatedCycle)
           .then(result => {
             console.log('onPeriodStopped: success', result);
+            setDisplayedCycle(updatedCycle);
           })
           .catch(error => {
             console.log('onPeriodStopped: error occured', error);
           })
+      } else {
+        setDisplayedCycle(updatedCycle);
       }
     }
   }
@@ -169,6 +175,36 @@ const App = () => {
       onStartDateConfirmed(newStartDate);
     } else {
       setIsStartDateCreated(false);
+    }
+  }
+
+  const onHistorySwipe = (direction: string) => {
+    console.log('onHistorySwipe', direction, displayedCycle?.cycleIndex);
+    
+    if (direction == "backward") {
+      if (displayedCycle != undefined 
+        && displayedCycle.cycleIndex != undefined
+        && cycleHistory != undefined){
+        const newIndex = displayedCycle?.cycleIndex-1;
+        if (newIndex >= 0) {
+          const nextCycle = cycleHistory[newIndex];
+          console.log('new index', newIndex, cycleHistory[newIndex]);
+          setDisplayedCycle(nextCycle);
+        }
+      }
+    } else {
+      if (displayedCycle != undefined 
+        && displayedCycle.cycleIndex != undefined
+        && cycleHistory != undefined){
+        const newIndex = displayedCycle?.cycleIndex+1;
+        if (newIndex < cycleHistory.length) {
+          const nextCycle = cycleHistory[newIndex];
+          console.log('new index', newIndex, cycleHistory[newIndex]);
+          setDisplayedCycle(nextCycle);
+        } else if (newIndex == currentCycle?.cycleIndex){
+          setDisplayedCycle(currentCycle);
+        }
+      }
     }
   }
 
@@ -233,10 +269,11 @@ const App = () => {
       readStartDate(user)
       .then(result => {
         console.log('onAuthStateChanged.readStartDate: result from collection', result);
+        let cycle: ICycle;
         if (result != undefined && result.exists) {
           const currentCycle = result.data();
           if (currentCycle != undefined) {
-            const cycle: any = {...currentCycle};
+            cycle = {...currentCycle} as ICycle;
             cycle.startDate = currentCycle.startDate.toDate();
             if (cycle.periodEndDate != undefined) {
               cycle.periodEndDate = currentCycle?.periodEndDate?.toDate();
@@ -245,15 +282,19 @@ const App = () => {
             console.log('onAuthStateChanged.readStartDate: Setting cycle', cycle);
             setStartDate(currentCycle.startDate.toDate());
             setCurrentCycle(cycle);
+            setDisplayedCycle(cycle);
             setIsStartDateCreated(true);
+            tryGetCycleHistory(user.uid, cycle);
           }
         }
         readReminders(user).then(reminderResult => {
           if (reminderResult != undefined && reminderResult.docs.length > 0) {
             const list: IReminderEntity[] = reminderResult.docs.map(doc => doc.data() as IReminderEntity);
             setReminderList(list);
+          } else {
+            setReminderList([]);
           }
-        })
+        });
       })
       .catch((error: any) => {
         if (error.includes('denied')) {
@@ -264,6 +305,40 @@ const App = () => {
       setIsAuthenticated(false);
     }
     if (initializing) setInitializing(false);
+  }
+
+  const tryGetCycleHistory = (uid: string, cycle?: ICycle) => {
+    cycleRepo.getCycleHistory(uid)
+    .then(snapshot => {
+      console.log("number of cycles in history: ",snapshot.size, cycle);
+      if (cycle != null){
+        cycle.cycleIndex = snapshot.size;
+        setCurrentCycle(cycle);
+        console.log('index in currentCycle', cycle.cycleIndex);
+      }
+      const list: ICycle[] = [];
+      if (!snapshot.empty && snapshot.docs != null) {
+        snapshot.docs.forEach(doc => {
+          if (doc.exists) {
+            const entity: ICycleRead = doc.data() as ICycleRead;
+            const cycle: ICycle = {
+              startDate: entity.startDate.toDate(),
+              endDate: entity.endDate?.toDate(),
+              periodEndDate: entity.periodEndDate?.toDate(),
+              cycleDuration: entity.cycleDuration,
+              periodDuration: entity.periodDuration,
+              cycleIndex: parseInt(doc.id)
+            };
+            list.push(cycle);
+          }
+        });
+      }
+      setCycleHistory(list);
+      console.log(`FINAL history: ${list}`);
+    })
+    .catch((error: any) => {
+      console.error(error);
+    });
   }
 
   // const onGoogleSigninPressed = () => {
@@ -298,11 +373,12 @@ const App = () => {
 
   useEffect(() => {
     console.log('starting', user);
+    Orientation.lockToPortrait();
     listenToAuthentication();
   }, []);
 
   return (
-    <SafeAreaView style={backgroundStyle}>
+    <SafeAreaView style={styles.appWrapper}>
         <Header title="My Cycle" profileName={user?.displayName} />
         {user != undefined &&
           <ReminderControl 
@@ -332,18 +408,23 @@ const App = () => {
         {!isStartDateCreated && 
           <Prologue onStartDateConfirmed={onStartDateConfirmed}></Prologue>
         }
-        {isStartDateCreated && currentCycle != undefined &&
+        {isStartDateCreated && displayedCycle != undefined &&
           <MainDateDisplay 
             uid={user?.uid}
-            currentCycle={currentCycle} 
+            currentCycle={displayedCycle} 
             onNewStartDate={onReset} 
-            onPeriodStopped={onPeriodStopped}></MainDateDisplay>
+            onPeriodStopped={onPeriodStopped}
+            onHistorySwipe={onHistorySwipe}></MainDateDisplay>
         }
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  appWrapper: {
+    width: "100%",
+    height: "100%",
+  },
   sectionContainer: {
     marginTop: 32,
     paddingHorizontal: 24,

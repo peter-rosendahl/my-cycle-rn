@@ -6,59 +6,128 @@ import {
     TouchableOpacity,
     ScrollView,
     Modal,
-    TouchableWithoutFeedback
+    TouchableWithoutFeedback,
+    TouchableHighlight
 } from 'react-native';
+import moment from 'moment';
+import GestureRecognizer from 'react-native-swipe-gestures';
+import { firebase} from '@react-native-firebase/firestore';
 import { CycleRepository } from '../core/domain/CycleRepository';
 import { SymptomRepository } from '../core/domain/SymptomRepository';
-import { ICycle, IDateRecord, RecordType } from '../core/entities/CycleEntity';
+import { ICycle, IDateRecord, DefaultSymptoms, RecordType, IDateRecordRead, EMainDateType } from '../core/entities/CycleEntity';
 import { buttonStyle } from "../core/styles/buttonStyles";
-import DatePrompt from './DatePrompt';
+import { modalStyle } from '../core/styles/ModalStyle';
 import InputPrompt from './InputPrompt';
-import MessagePrompt from './MessagePrompt';
+import FactBox from './FactBox';
+import EventForm from './EventForm';
+import DatePrompt from './DatePrompt';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import * as Ionicon from 'react-native-vector-icons/Ionicons';
+
+export enum EModalType {
+    Event,
+    PeriodStopped,
+    NewCycle,
+    undefined
+}
 
 type MainDateProps = {
     uid?: string,
     currentCycle: ICycle,
     onNewStartDate: (newStartDate: Date, cycleDuration: number) => void,
     onPeriodStopped: (date: Date, daysInCycle: number) => void,
+    onHistorySwipe: (direction: string) => void
 }
 
-const MainDateDisplay: React.FC<MainDateProps> = ({uid, currentCycle, onNewStartDate, onPeriodStopped}) => {
+const MainDateDisplay: React.FC<MainDateProps> = ({uid, currentCycle, onNewStartDate, onPeriodStopped, onHistorySwipe}) => {
+
+    const swipeConfig = {
+        velocityThreshold: 0.3,
+        directionalOffsetThreshold: 80
+    };
 
     const cycleRepo = new CycleRepository();
     const symptomRepo = new SymptomRepository();
     const dayCount = 86400000;
     const [daysFromStart, setDaysFromStart] = useState(0);
     const [daysFromPeriodStopped, setDaysFromPeriodStopped] = useState(0);
-    const [modalDisplayed, setModalDisplayed] = useState<RecordType | "periodStopped" | "newCycle" | "userSymptom" | "newSymptom" | undefined>(undefined);
+    const [modalDisplayed, setModalDisplayed] = useState<RecordType | EModalType | undefined>(undefined);
     const [symptoms, setSymptoms] = useState<string[]>([]);
+    const [events, setEvents] = useState<IDateRecord[]>([]);
     const [currentSymptom, setCurrentSymptom] = useState<string>('');
+    const [isCurrentCycle, setIsCurrentCycle] = useState<boolean>(true);
 
     useEffect(() => {
+        console.log('displayed cycle changed', currentCycle);
+        setModalDisplayed(undefined);
         calculateDays();
         perpareSymptoms();
+        getEvents();
     }, [currentCycle]);
 
     const calculateDays = () => {
         console.log('calculateDays: Triggered', currentCycle);
-        const today = new Date().getTime();
-        const start = currentCycle.startDate?.getTime(),
-            difference = Math.floor((today-start)/dayCount);
+        const now = new Date();
+        let difference = calculateDifference(currentCycle.startDate, now);
+        // const today = new Date().getTime();
+        // const start = currentCycle.startDate?.getTime(),
+        //     difference = Math.floor((today-start)/dayCount);
         setDaysFromStart(difference);
         if (currentCycle.periodEndDate != undefined) {
             console.log('calculateDays: period has stopped on date: ', currentCycle.periodEndDate);
-            const stopped = currentCycle.periodEndDate.getTime(),
-                difference = Math.floor((today-stopped)/dayCount);
-            console.log(`calculateDays, stopped: ${stopped}, today: ${today}, difference: ${today-stopped}, in days: ${difference}`);
+            difference = calculateDifference(currentCycle.periodEndDate, now);
+            // const stopped = currentCycle.periodEndDate.getTime(),
+            //     difference = Math.floor((today-stopped)/dayCount);
             setDaysFromPeriodStopped(difference);
         }
+        setIsCurrentCycle(currentCycle.endDate == undefined);
+    }
+
+    const getEvents = () => {
+        console.log('MainDateDisplay.getEvents triggered', uid, currentCycle.cycleIndex);
+        if (uid != null && currentCycle.cycleIndex != null) {
+            cycleRepo.getCycleRecords(uid, (currentCycle.endDate == undefined ? undefined : currentCycle.cycleIndex))
+                .then(collection => {
+                    let eventRecords: IDateRecord[] = [];
+                    if (collection.docs.length > 0) {
+                        console.log('event docs are more than 0');
+                        collection.docs.forEach(doc => {
+                            let event = doc.data() as IDateRecordRead;
+                            eventRecords.push({
+                                recordDate: event.recordDate.toDate(),
+                                recordType: event.recordType,
+                                daysInCycle: event.daysInCycle,
+                                recordValue: event.recordValue
+                            });
+                        })
+                    }
+                    if (eventRecords.length > 0) {
+                        console.log(`MainDateDisplay.getEvents records: ${JSON.stringify(eventRecords)}`, collection);
+                        setSortedEventListByDate(eventRecords);
+                    } else {
+                        setEvents([]);
+                    }
+                })
+        }
+    }
+
+    const renderEndDate = (cycle: ICycle) => {
+        if (cycle.endDate != null){
+            return moment(currentCycle.endDate).format("D. MMM yyyy");
+        } else {
+            return `now`;
+        }
+    }
+
+    const calculateDifference = (lowerDate: Date, higherDate: Date): number => {
+        const lower =  lowerDate.getTime();
+        const higher = higherDate.getTime(),
+            difference = Math.floor((higher-lower)/dayCount);
+        return difference;
     }
 
     const perpareSymptoms = () => {
         console.log('prepareSymptoms: Triggered');
-        const list: string[] = [];
+        const list: string[] = [...DefaultSymptoms];
         if (uid != undefined) {
             console.log('getting symptomList...');
             symptomRepo.getList(uid)
@@ -77,70 +146,32 @@ const MainDateDisplay: React.FC<MainDateProps> = ({uid, currentCycle, onNewStart
         }
     }
 
-    const notifyOvulation = (dateValue: Date) => {
-        console.log('notifyOvulation');
-        // setModalDisplayed("Ovulation");
-        const record: IDateRecord = {
-            recordDate: dateValue,
-            recordType: "Ovulation",
-            daysInCycle: daysFromStart
-        }
-        addRecordToCycle(record);
-    }
-
-    const notifySpotBleed = (dateValue: Date) => {
-        console.log('notifySpotBleed');
-        // setModalDisplayed("Spot bleed");
-        const record: IDateRecord = {
-            recordDate: dateValue,
-            recordType: "Spot bleed",
-            daysInCycle: daysFromStart
-        }
-        addRecordToCycle(record);
-    }
-
-    const notifySymptom = (dateValue: Date) => {
-        console.log('notifySymptom');
-        // setModalDisplayed("Spot bleed");
-        const record: IDateRecord = {
-            recordDate: dateValue,
-            recordType: currentSymptom,
-            daysInCycle: daysFromStart
-        }
-        addRecordToCycle(record);
-    }
-
-    const addRecordToCycle = (record: IDateRecord) => {
+    const addRecordToCycle = async(record: IDateRecord): Promise<boolean> => {
         if (uid != undefined) {
-            cycleRepo.getCycleRecords(uid)
-                .then(collection => {
+            try {
+                const collection = await cycleRepo.getCycleRecords(uid)
+                if (collection != null) {
                     let index = 0;
                     if (collection != undefined && collection.docs.length > 0) {
                         index = collection.docs.length;
                     }
-                    cycleRepo.addRecordToCycle(uid, index, record)
-                        .then(result => {
-                            console.log('addRecordToCycle', 'success', result);
-                        })
-                })
+                    await cycleRepo.addRecordToCycle(uid, index, record);
+                }
+                return true;
+            } catch (error) {
+                return false;
+            }
         }
+        return true;
     }
 
-    const openModal = (type: RecordType | "newCycle" | "periodStopped" | "userSymptom"| "newSymptom", symptomName?: string) => {
-        if (type == "userSymptom" && symptomName != undefined) {
-            setCurrentSymptom(symptomName);
-        }
+    const openModal = (type: RecordType | EModalType, symptomName?: string) => {
         setModalDisplayed(type);
-    }
-
-    const onMessageModalConfirmed = () => {
-        console.log('onMessageModalConfirmed');
-        setModalDisplayed(undefined);
     }
 
     const onNewSymptomNameConfirmed = (value: string) => {
         if (uid != undefined) {
-            symptomRepo.addSymptom(uid, symptoms.length, value)
+            symptomRepo.addSymptom(uid, (symptoms.length-DefaultSymptoms.length), value)
                 .then(result => {
                     setModalDisplayed(undefined);
                     perpareSymptoms();
@@ -152,151 +183,164 @@ const MainDateDisplay: React.FC<MainDateProps> = ({uid, currentCycle, onNewStart
         }
     }
 
-    const onDateModalConfirmed = (value: Date) => {
-        console.log(`onDateModalConfirmed: dateValue ${value}, type: ${modalDisplayed}`);
-        switch (modalDisplayed) {
-            case "periodStopped": {
-                onPeriodStopped(value, daysFromStart);
-                break;
-            }
-            case "newCycle": {
-                onNewStartDate(value, daysFromStart);
-                break;
-            }
-            case "Ovulation": {
-                notifyOvulation(value);
-                break;
-            }
-            case "Spot bleed": {
-                notifySpotBleed(value);
-                break;
-            }
-            case "userSymptom": {
-                if (currentSymptom != undefined) {
-                    notifySymptom(value);
+    const onEventFormSumbitted = (record: IDateRecord) => {
+        console.log('onEventFormSubmitted data', record);
+        addRecordToCycle(record)
+            .then(isSuccess => {
+                console.log('onEventFormSubmitted.addRecordToCycle.then: isSuccess = ', isSuccess);
+                if (isSuccess) {
+                    setModalDisplayed(undefined);
+                    addEventRecordToLocalList(record);
                 }
+            });
+    }
+
+    const addEventRecordToLocalList = (record: IDateRecord) => {
+        const list = [...events];
+        list.push(record);
+        setSortedEventListByDate(list);
+    }
+    
+    const setSortedEventListByDate = (list: IDateRecord[]) => {
+        const sortedList = list.sort((a, b) => {
+            console.log('setSorted TEST', a.recordDate, b.recordDate);
+            const dateA = a.recordDate.valueOf();
+            const dateB = b.recordDate.valueOf();
+            console.log('setSortedEventListByDate', typeof(dateA), dateA);
+            if(dateA > dateB){
+                return 1; // return -1 here for DESC order
             }
+            return -1 // return 1 here for DESC Order
+        })
+        setEvents(sortedList);
+    }
+
+    const confirmMainDateUpdate = (date: Date, type: EMainDateType) => {
+        const daysInCycle = calculateDifference(currentCycle.startDate, date);
+        if (type == EMainDateType.PeriodStopped) {
+            onPeriodStopped(date, daysInCycle);
+        } else if (type == EMainDateType.NewCycle) {
+            onNewStartDate(date, daysInCycle);
         }
-        setModalDisplayed(undefined);
+    }
+
+    const onSwipe = (direction: string) => {
+        if (direction == "forward" && isCurrentCycle) return;
+        if (direction == "backward" && currentCycle.cycleIndex == 0) return;
+        onHistorySwipe(direction);
     }
 
     return (
         <View style={styles.wrapper}>
-            <Text style={[styles.descriptionText, styles.pBottom]}>You are currently</Text>
-            <Text style={styles.days}>{daysFromStart}</Text>
-            <Text style={[styles.descriptionText, styles.pTop]}>days in your current cycle</Text>
-            {currentCycle.periodEndDate != undefined &&
-                <View>
-                    <TouchableOpacity disabled={uid == undefined} onPress={() => openModal('periodStopped')} style={{display: "flex", flexDirection: "row", alignItems: "center"}}>
-                        <Text style={[styles.descriptionText, styles.smaller, {textDecorationLine: "underline"}]}>(<Text style={{fontWeight: "900"}}>{daysFromPeriodStopped}</Text> days since your period stopped)</Text>
-                        { uid != undefined &&
-                            <Icon name="edit" style={{color: "#333333"}}></Icon>
-                        }
-                    </TouchableOpacity>
-                </View>
-            }
-            <Text style={[styles.descriptionText, styles.pBottom, styles.smaller]}>Current cycle started {currentCycle.startDate.toDateString()}</Text>
-            <ScrollView showsVerticalScrollIndicator={true} contentContainerStyle={styles.mainContent}>
-                {/* {uid != undefined &&
-                    <Text style={[styles.descriptionText, styles.pBottom, styles.smaller, {fontWeight: "600"}]}>Experiencing any of these symptoms(?):</Text>
-                } */}
-                {currentCycle.periodEndDate == undefined && uid != undefined &&
-                    <View>
-                        <TouchableOpacity style={[buttonStyle.primaryBtn, buttonStyle.disabled, {marginBottom: 10}]} disabled={true} onPress={() => console.log('disabled button pressed.')}>
-                            <Text style={buttonStyle.buttonText}>Ovulating</Text>
-                            <Icon name="child-care" style={{color: "#333333", position: "absolute", right: 12, fontSize: 16}}></Icon>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={[buttonStyle.primaryBtn, buttonStyle.disabled, {marginBottom: 10}]} disabled={true} onPress={() => console.log('disabled button pressed.')}>
-                            <Text style={buttonStyle.buttonText}>Spot bleeding</Text>
-                            <Ionicon.default name="water" style={{color: "#333333", position: "absolute", right: 12, fontSize: 16}}></Ionicon.default>
-                        </TouchableOpacity>
-                    </View>
-                }
-                {currentCycle.periodEndDate != undefined && uid != undefined &&
-                    <View>
-                        <TouchableOpacity style={[buttonStyle.primaryBtn, {marginBottom: 10}]} onPress={() => openModal('Ovulation')}>
-                            <Text style={buttonStyle.buttonText}>Ovulating</Text>
-                            <Icon name="child-care" style={{color: "#333333", position: "absolute", right: 12, fontSize: 16}}></Icon>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={[buttonStyle.primaryBtn, {marginBottom: 10}]} onPress={() => openModal('Spot bleed')}>
-                            <Text style={buttonStyle.buttonText}>Spot bleeding</Text>
-                            <Ionicon.default name="water" style={{color: "#333333", position: "absolute", right: 12, fontSize: 16}}></Ionicon.default>
-                        </TouchableOpacity>
-                    </View>
-                }
+            <View style={{display: "flex", flexDirection: "row", justifyContent: "space-between", flex: 1, width: "100%"}}>
                 {uid != undefined &&
-                    <View>
-                        {symptoms.length > 0 && symptoms.map((symptom, index) => 
-                            <TouchableOpacity key={index} style={[buttonStyle.primaryBtn, {marginBottom: 10}]} onPress={() => openModal('userSymptom', symptom)}>
-                                <Text style={buttonStyle.buttonText}>{symptom}</Text>
-                                <Icon name="sentiment-very-dissatisfied" style={{color: "#333333", position: "absolute", right: 12, fontSize: 16, bottom: 12}}></Icon>
-                            </TouchableOpacity>
-                        )}
-                        <TouchableOpacity style={[buttonStyle.primaryBtn, {marginBottom: 10}]} onPress={() => openModal('newSymptom')}>
-                            <Text style={[buttonStyle.buttonText, {fontStyle: "italic", fontWeight: "600"}]}>+ new symptom</Text>
-                            <Icon name="sentiment-very-dissatisfied" style={{color: "#333333", position: "absolute", right: 12, fontSize: 16, bottom: 12}}></Icon>
+                    <View style={{flex: 1, maxWidth: 28, display: "flex", justifyContent: "center"}}>
+                        <TouchableOpacity onPress={() => onSwipe("backward")} style={{ height: 64, display: "flex", justifyContent: "center", alignItems: "center" }}>
+                            <Icon style={{color: "#666", fontSize: 28, height: 64, opacity: currentCycle.cycleIndex == 0 ? 0 : 1}} name="chevron-left"></Icon>
                         </TouchableOpacity>
                     </View>
                 }
-            </ScrollView>
-            <View style={styles.bottom}>
-                {currentCycle.periodEndDate == undefined && 
-                    <TouchableOpacity style={buttonStyle.primaryBtn} onPress={() => openModal('periodStopped')}>
-                        <Text style={[buttonStyle.buttonText, {fontWeight: "600"}]}>My period stopped</Text>
-                    </TouchableOpacity>
-                }
-                {currentCycle.periodEndDate != undefined &&
-                    <TouchableOpacity style={buttonStyle.primaryBtn} onPress={() => openModal('newCycle')}>
-                        <Text style={[buttonStyle.buttonText, {fontWeight: "600"}]}>Start new cycle</Text>
-                    </TouchableOpacity>
+                <GestureRecognizer config={swipeConfig} onSwipeLeft={() => onSwipe("forward")} onSwipeRight={() => onSwipe("backward")} style={{display: "flex", flex: 1, flexDirection: "column", alignItems: "center" }}>
+                        <Text style={[styles.descriptionText, styles.smaller]}>
+                            {moment(currentCycle.startDate).format("D. MMM yyyy")} - {renderEndDate(currentCycle)}
+                        </Text>
+                        <FactBox 
+                            title={isCurrentCycle ? 'Your current cycle' : 'Cycle lasted for'} 
+                            value={currentCycle.endDate == null ? daysFromStart : calculateDifference(currentCycle.startDate, currentCycle.endDate)} 
+                            subtitle={isCurrentCycle ? 'days in' : 'days'}
+                            isBigger={true} 
+                            customStyles={styles.mainFactBox} />
+                        <View style={{display: "flex", flexDirection: "row", justifyContent: "space-around", width:300, marginBottom: 30}}>
+                            {currentCycle.periodEndDate != undefined &&
+                                <TouchableHighlight underlayColor={"#ECDDFF00"} onPress={() => openModal(EModalType.PeriodStopped)}>
+                                    <FactBox
+                                        title={isCurrentCycle ? 'Period stopped' : 'Period lasted for'}
+                                        value={isCurrentCycle ? daysFromPeriodStopped : calculateDifference(currentCycle.startDate, currentCycle.periodEndDate)} 
+                                        subtitle={isCurrentCycle ? "days ago" : "days"}
+                                        isBigger={false} />
+                                </TouchableHighlight>
+                            }
+                        </View>
+                        <ScrollView showsVerticalScrollIndicator={true} style={{maxHeight: 150, height: "auto", backgroundColor: "#FFF", width: 300}}>
+                            <Text style={styles.descriptionText}>Events logged in cycle</Text>
+                            {events.length == 0 &&
+                                <Text style={[styles.descriptionText, styles.smaller]}>No events registered</Text>
+                            }
+                            {events.length > 0 && events.map((event: IDateRecord, index: number) => (
+                                <View key={index} style={{width: 300, display: "flex", flexDirection: "column", justifyContent: "space-between", paddingBottom: 12}}>
+                                    <Text style={{color: "#666666"}}>{moment(event.recordDate).format("D. MMM YYYY")}</Text>
+                                    <Text style={{color: "#000000"}}>{event.recordType}</Text>
+                                </View>
+                            ))}
+                        </ScrollView>
+                    {isCurrentCycle &&
+                        <View style={[styles.alignToBottom]}>
+                            <TouchableHighlight underlayColor={"#ECDDFF00"} style={buttonStyle.primaryBtn} onPress={() => openModal(EModalType.Event)}>
+                                <Text style={[buttonStyle.buttonText, {fontWeight: "600"}]}>Register event...</Text>
+                            </TouchableHighlight>
+                            <View style={styles.bottom}>
+                                {currentCycle.periodEndDate == undefined && 
+                                    <TouchableHighlight underlayColor={"#ECDDFF00"} style={buttonStyle.primaryBtn} onPress={() => openModal(EModalType.PeriodStopped)}>
+                                        <Text style={[buttonStyle.buttonText, {fontWeight: "600"}]}>My period stopped</Text>
+                                    </TouchableHighlight>
+                                }
+                                {currentCycle.periodEndDate != undefined &&
+                                    <TouchableHighlight underlayColor={"#ECDDFF00"} style={buttonStyle.primaryBtn} onPress={() => openModal(EModalType.NewCycle)}>
+                                        <Text style={[buttonStyle.buttonText, {fontWeight: "600"}]}>Start new cycle</Text>
+                                    </TouchableHighlight>
+                                }
+                            </View>
+                        </View>
+                    }
+                </GestureRecognizer>
+                {uid != undefined &&
+                    <View style={{flex: 1, maxWidth: 28, display: "flex", justifyContent: "center"}}>
+                        <TouchableOpacity onPress={() => onSwipe("forward")} style={{ height: 64, display: "flex", justifyContent: "center", alignItems: "center" }}>
+                            <Icon style={{color: "#666", fontSize: 28, opacity: isCurrentCycle ? 0 : 1}} name="chevron-right"></Icon>
+                        </TouchableOpacity>
+                    </View>
                 }
             </View>
-            <Modal 
-                animationType='fade'
-                transparent={true}
-                visible={modalDisplayed == "newSymptom"}>
-                    <TouchableOpacity style={modalStyle.centeredView} onPress={() => setModalDisplayed(undefined)}>
-                        <TouchableWithoutFeedback>
-                            <View style={modalStyle.modalWrapper}>
-                                <InputPrompt 
-                                    buttonText='Save'
-                                    placeholderText='My symptom'
-                                    description='Please give your symptom a name.'
-                                    onConfirmed={onNewSymptomNameConfirmed}/>
-                            </View>
-                        </TouchableWithoutFeedback>
-                    </TouchableOpacity>
-            </Modal>
-            <Modal
-                animationType='fade'
-                transparent={true}
-                visible={
-                    modalDisplayed == "periodStopped" || 
-                    modalDisplayed == "newCycle" ||
-                    modalDisplayed == "Ovulation" ||
-                    modalDisplayed == "Spot bleed" ||
-                    modalDisplayed == "userSymptom"}>
-                    <TouchableOpacity style={modalStyle.centeredView} onPress={() => setModalDisplayed(undefined)}>
-                        <TouchableWithoutFeedback>
-                            <View style={modalStyle.modalWrapper}>
-                                <DatePrompt 
-                                    buttonText='Confirm'
-                                    description={
-                                        modalDisplayed == "periodStopped"
-                                        ? 'Please confirm the date where your period stopped'
-                                        : modalDisplayed == "newCycle"
-                                            ? 'Please confirm the date where your new cycle started'
-                                            : modalDisplayed == "Ovulation"
-                                                ? 'Please confirm the date where you have been ovulating'
-                                                : modalDisplayed == "Spot bleed"
-                                                    ? 'Please confirm the date where you have experienced spot bleeding'
-                                                    : `Please confirm the date where you have experienced the symptom: ${currentSymptom}`}
-                                    onConfirmed={onDateModalConfirmed}/>
-                            </View>
-                        </TouchableWithoutFeedback>
-                    </TouchableOpacity>
-            </Modal>
-        </View>
+                <Modal 
+                    animationType='fade'
+                    transparent={true}
+                    visible={modalDisplayed == EModalType.PeriodStopped || modalDisplayed == EModalType.NewCycle}>
+                        <TouchableHighlight underlayColor={"#ECDDFF00"} style={modalStyle.centeredView} onPress={() => setModalDisplayed(undefined)}>
+                            <TouchableWithoutFeedback>
+                                <View style={modalStyle.modalWrapper}>
+                                    {modalDisplayed == EModalType.PeriodStopped &&
+                                        <DatePrompt
+                                            buttonText='Confirm'
+                                            description='Please confirm when your period stopped.'
+                                            onConfirmed={(date) => confirmMainDateUpdate(date, EMainDateType.PeriodStopped)}></DatePrompt>
+                                    }
+                                    {modalDisplayed == EModalType.NewCycle &&
+                                        <DatePrompt
+                                            buttonText='Confirm'
+                                            description='Please confirm the date where your new cycle started'
+                                            onConfirmed={(date) => confirmMainDateUpdate(date, EMainDateType.NewCycle)}></DatePrompt>
+                                    }
+                                </View>
+                            </TouchableWithoutFeedback>
+                        </TouchableHighlight>
+                </Modal>
+                <Modal
+                    animationType='fade'
+                    transparent={true}
+                    visible={
+                        modalDisplayed == EModalType.Event}>
+                        <TouchableHighlight underlayColor={"#ECDDFF00"} style={modalStyle.centeredView} onPress={() => setModalDisplayed(undefined)}>
+                            <TouchableWithoutFeedback>
+                                <View style={modalStyle.modalWrapper}>
+                                    <EventForm 
+                                        symptomList={symptoms} 
+                                        onSubmit={onEventFormSumbitted}
+                                        onNewSymptomSubmitted={onNewSymptomNameConfirmed}/>
+                                </View>
+                            </TouchableWithoutFeedback>
+                        </TouchableHighlight>
+                </Modal>
+            </View>
     )
 }
 
@@ -308,14 +352,29 @@ const styles = StyleSheet.create({
     wrapper: {
         flex: 1,
         display: "flex",
+        width: "100%",
+        paddingTop: 18,
         flexDirection: "column",
         alignItems: "center",
-        backgroundColor: "#FFFFFF"
+        backgroundColor: "#ffefff"
+    },
+    mainFactBox: {
+        // flex: 1,
+        borderWidth: 5,
+        width: 300,
+        marginBottom: 10
     },
     mainContent: {
         flexGrow: 1,
         alignItems: "center",
         paddingHorizontal: 80
+    },
+    alignToBottom: {
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "flex-end",
+        alignItems: "center"
     },
     bottom: {
         height: 100,
@@ -340,30 +399,5 @@ const styles = StyleSheet.create({
     days: {
         fontSize: 40,
         color: "#000000"
-    }
-})
-
-const modalStyle = StyleSheet.create({
-    centeredView: {
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-        marginTop: 0,
-        backgroundColor: "#00000099"
-    },
-    modalWrapper: {
-        width: 300,
-        padding: 35,
-        borderRadius: 8,
-        backgroundColor: "#ffffff",
-        alignItems: "center",
-        shadowColor: "#000",
-        shadowOffset: {
-          width: 0,
-          height: 2
-        },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-        elevation: 5
     }
 })

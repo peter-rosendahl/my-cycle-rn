@@ -258,6 +258,7 @@ const modalStyle = StyleSheet.create({
     },
     modalWrapper: {
         width: 300,
+        minHeight: 150,
         padding: 35,
         borderRadius: 8,
         backgroundColor: "#ffffff",

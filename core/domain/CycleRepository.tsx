@@ -18,8 +18,13 @@ export class CycleRepository {
         return await this.getUserDoc(uid).collection('currentCycle').doc('cycle').update(currentCycle);
     }
 
-    getCycleRecords = async(uid: string) => {
-        return await this.getUserDoc(uid).collection('currentCycle').doc('cycle').collection('dateRecords').get();
+    getCycleRecords = async(uid: string, cycleId?: number) => {
+        console.log('CycleRepo.getCycleRecords', cycleId);
+        if (cycleId != undefined) {
+            return await this.getUserDoc(uid).collection('cycleHistory').doc(`${cycleId}`).collection('dateRecords').get();
+        } else {
+            return await this.getUserDoc(uid).collection('currentCycle').doc('cycle').collection('dateRecords').get();
+        }
     }
 
     addRecordToCycle = async(uid: string, index: number, record: IDateRecord) => {

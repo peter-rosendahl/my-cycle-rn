@@ -29,11 +29,13 @@ const Header: React.FC<{title: string, profileName?: string | null}> = ({title, 
 const style = StyleSheet.create({
   wrapper: {
     display: "flex",
+    borderColor:"#DEC4FF",
+    borderBottomWidth: 1,
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#ffffff",
-    height: 100
+    paddingVertical: 18
   },
   title: {
     textAlign: "center",

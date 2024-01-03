@@ -20,6 +20,7 @@ const DatePrompt: React.FC<{description: string, buttonText:string, onConfirmed:
             <DatePicker 
                 style={style.dateInput}
                 date={date}
+                textColor='#666'
                 mode="date"
                 onDateChange={setDate} />
             {/* <TextInput multiline={true} onChangeText={(e) => setDate(e)} style={style.dateInput} /> */}
