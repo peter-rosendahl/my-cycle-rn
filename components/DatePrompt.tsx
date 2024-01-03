@@ -7,7 +7,7 @@ import {
     TouchableOpacity
 } from 'react-native';
 import DatePicker from 'react-native-date-picker';
-import { buttonStyle } from '../styles';
+import { buttonStyle } from '../core/styles/buttonStyles';
 
 const DatePrompt: React.FC<{description: string, buttonText:string, onConfirmed: (date: Date) => void}> = ({description, buttonText, onConfirmed}) => {
 
@@ -20,6 +20,7 @@ const DatePrompt: React.FC<{description: string, buttonText:string, onConfirmed:
             <DatePicker 
                 style={style.dateInput}
                 date={date}
+                textColor='#666'
                 mode="date"
                 onDateChange={setDate} />
             {/* <TextInput multiline={true} onChangeText={(e) => setDate(e)} style={style.dateInput} /> */}
@@ -38,7 +39,9 @@ const style = StyleSheet.create({
         alignItems: "center"
     },
     description: {
-        color: "#666666"
+        color: "#666666",
+        marginBottom: 20,
+        textAlign: "center"
     },
     dateInput: {
         elevation: 4,
