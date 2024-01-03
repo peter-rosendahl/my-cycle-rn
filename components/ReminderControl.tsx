@@ -15,6 +15,7 @@ import { buttonStyle } from '../core/styles/buttonStyles';
 import { ICycle, TimeInMs } from '../core/entities/CycleEntity';
 import { IReminderEntity } from '../core/entities/ReminderEntity';
 import { ReminderRepository } from '../core/domain/ReminderRepository';
+import { PERMISSIONS, request } from 'react-native-permissions';
 
 type ReminderProps = {
     currentCycle: ICycle | undefined,
@@ -36,63 +37,69 @@ const ReminderControl: React.FC<ReminderProps> = ({currentCycle, storedReminderL
     const configureNotificationSetup = () => {
       console.log('CONFIGURING PUSH NOTIFICATIONS...');
       console.log('ReminderControl: storedReminders: ', storedReminderList);
-      PushNotification.configure({
-          // (optional) Called when Token is generated (iOS and Android)
-          onRegister: function (token) {
-          console.log("TOKEN:", token);
-          },
+      request(PERMISSIONS.ANDROID.POST_NOTIFICATIONS)
+        .then(isGranted => {
+          if (isGranted) {
+            PushNotification.configure({
+                // (optional) Called when Token is generated (iOS and Android)
+                onRegister: function (token) {
+                console.log("TOKEN:", token);
+                },
+            
+                // (required) Called when a remote is received or opened, or local notification is opened
+                onNotification: function (notification) {
+                    console.log("NOTIFICATION:", notification);
+                },
+            
+                // (optional) Called when Registered Action is pressed and invokeApp is false, if true onNotification will be called (Android)
+                onAction: function (notification) {
+                    console.log("ACTION:", notification.action);
+                    console.log("NOTIFICATION:", notification);
+                    // process the action
+                },
+            
+                // (optional) Called when the user fails to register for remote notifications. Typically occurs when APNS is having issues, or the device is a simulator. (iOS)
+                onRegistrationError: function(err) {
+                    console.error(err.message, err);
+                },
+            
+                // Should the initial notification be popped automatically
+                // default: true
+                popInitialNotification: true,
+            
+                /**
+                 * (optional) default: true
+                 * - Specified if permissions (ios) and token (android and ios) will requested or not,
+                 * - if not, you must call PushNotificationsHandler.requestPermissions() later
+                 * - if you are not using remote notification or do not have Firebase installed, use this:
+                 *     requestPermissions: Platform.OS === 'ios'
+                 */
+                requestPermissions: true,
+            });
+            PushNotification.createChannel({
+                channelId: "reminders",
+                channelName: "Reminders",
+                channelDescription: "Reminders that you schedule in the app in relation to current cycle."
+            }, () => {});
+            
+            PushNotification.getScheduledLocalNotifications(list => {
+                console.log('Scheduled notification', list);
+                setNotifications(list);
+            });
       
-          // (required) Called when a remote is received or opened, or local notification is opened
-          onNotification: function (notification) {
-              console.log("NOTIFICATION:", notification);
-          },
-      
-          // (optional) Called when Registered Action is pressed and invokeApp is false, if true onNotification will be called (Android)
-          onAction: function (notification) {
-              console.log("ACTION:", notification.action);
-              console.log("NOTIFICATION:", notification);
-              // process the action
-          },
-      
-          // (optional) Called when the user fails to register for remote notifications. Typically occurs when APNS is having issues, or the device is a simulator. (iOS)
-          onRegistrationError: function(err) {
-              console.error(err.message, err);
-          },
-      
-          // Should the initial notification be popped automatically
-          // default: true
-          popInitialNotification: true,
-      
-          /**
-           * (optional) default: true
-           * - Specified if permissions (ios) and token (android and ios) will requested or not,
-           * - if not, you must call PushNotificationsHandler.requestPermissions() later
-           * - if you are not using remote notification or do not have Firebase installed, use this:
-           *     requestPermissions: Platform.OS === 'ios'
-           */
-          requestPermissions: true,
-      });
-      PushNotification.createChannel({
-          channelId: "reminders",
-          channelName: "Reminders",
-          channelDescription: "Reminders that you schedule in the app in relation to current cycle."
-      }, () => {});
-      
-      PushNotification.getScheduledLocalNotifications(list => {
-          console.log('Scheduled notification', list);
-          setNotifications(list);
-      });
+            if (storedReminderList != undefined) {
+              if (storedReminderList.length > 0) {
+                setDays(storedReminderList[0].numberOfDays.toString());
+                if (notifications.length == 0) {
+                  scheduleNotification(storedReminderList[0].numberOfDays);
+                }
+              } else {
+                clearNotifications();
+              }
+            }
 
-      if (storedReminderList != undefined) {
-        if (storedReminderList.length > 0) {
-          setDays(storedReminderList[0].numberOfDays.toString());
-          if (notifications.length == 0) {
-            scheduleNotification(storedReminderList[0].numberOfDays);
           }
-        } else {
-          clearNotifications();
-        }
-      }
+        });
   }
 
   const clearNotifications = () => {
