@@ -39,11 +39,11 @@ const Auth: React.FC<AuthProps> = ({auth, onSignOut, user}) => {
     const signInWithGoogle = async() => {
         // Get the users ID token
         console.log('signInWithGoogle: Attempting to signin...');
-        const { idToken } = await GoogleSignin.signIn();
+        const {  data, type } = await GoogleSignin.signIn();
 
-        console.log('signInWithGoogle: Got idToken', idToken);
+        console.log('signInWithGoogle: type ', type, ', data', data?.idToken);
         // Create a Google credential with the token
-        const googleCredential = auth.GoogleAuthProvider.credential(idToken);
+        const googleCredential = auth.GoogleAuthProvider.credential(data?.idToken);
 
         console.log('signInWithGoogle: signing in with credential', googleCredential);
         // Sign-in the user with the credential

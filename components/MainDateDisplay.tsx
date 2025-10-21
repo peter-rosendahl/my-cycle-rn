@@ -33,12 +33,14 @@ export enum EModalType {
 type MainDateProps = {
     uid?: string,
     currentCycle: ICycle,
+    averageDays: number | undefined,
+    averagePeriodLength: number | undefined,
     onNewStartDate: (newStartDate: Date, cycleDuration: number) => void,
     onPeriodStopped: (date: Date, daysInCycle: number) => void,
     onHistorySwipe: (direction: string) => void
 }
 
-const MainDateDisplay: React.FC<MainDateProps> = ({uid, currentCycle, onNewStartDate, onPeriodStopped, onHistorySwipe}) => {
+const MainDateDisplay: React.FC<MainDateProps> = ({uid, currentCycle, averageDays, averagePeriodLength, onNewStartDate, onPeriodStopped, onHistorySwipe}) => {
 
     const swipeConfig = {
         velocityThreshold: 0.3,
@@ -87,9 +89,10 @@ const MainDateDisplay: React.FC<MainDateProps> = ({uid, currentCycle, onNewStart
         if (uid != null && currentCycle.cycleIndex != null) {
             cycleRepo.getCycleRecords(uid, (currentCycle.endDate == undefined ? undefined : currentCycle.cycleIndex))
                 .then(collection => {
+                    console.log('getCycleRecords.result', collection.docs.length);
                     let eventRecords: IDateRecord[] = [];
                     if (collection.docs.length > 0) {
-                        console.log('event docs are more than 0');
+                        console.log('event docs are more than 0', collection.docs);
                         collection.docs.forEach(doc => {
                             let event = doc.data() as IDateRecordRead;
                             eventRecords.push({
@@ -151,9 +154,9 @@ const MainDateDisplay: React.FC<MainDateProps> = ({uid, currentCycle, onNewStart
             try {
                 const collection = await cycleRepo.getCycleRecords(uid)
                 if (collection != null) {
-                    let index = 0;
+                    let index = 1000;
                     if (collection != undefined && collection.docs.length > 0) {
-                        index = collection.docs.length;
+                        index += collection.docs.length;
                     }
                     await cycleRepo.addRecordToCycle(uid, index, record);
                 }
@@ -247,6 +250,7 @@ const MainDateDisplay: React.FC<MainDateProps> = ({uid, currentCycle, onNewStart
                         <FactBox 
                             title={isCurrentCycle ? 'Your current cycle' : 'Cycle lasted for'} 
                             value={currentCycle.endDate == null ? daysFromStart : calculateDifference(currentCycle.startDate, currentCycle.endDate)} 
+                            average={averageDays}
                             subtitle={isCurrentCycle ? 'days in' : 'days'}
                             isBigger={true} 
                             customStyles={styles.mainFactBox} />
@@ -256,6 +260,7 @@ const MainDateDisplay: React.FC<MainDateProps> = ({uid, currentCycle, onNewStart
                                     <FactBox
                                         title={isCurrentCycle ? 'Period stopped' : 'Period lasted for'}
                                         value={isCurrentCycle ? daysFromPeriodStopped : calculateDifference(currentCycle.startDate, currentCycle.periodEndDate)} 
+                                        average={averagePeriodLength}
                                         subtitle={isCurrentCycle ? "days ago" : "days"}
                                         isBigger={false} />
                                 </TouchableHighlight>

@@ -21,13 +21,6 @@ import {
 } from 'react-native';
 import Orientation from 'react-native-orientation-locker';
 
-import {
-  Colors,
-  DebugInstructions,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
-
 import auth, {FirebaseAuthTypes} from '@react-native-firebase/auth';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
@@ -89,6 +82,8 @@ const App = () => {
   const [isStartDateCreated, setIsStartDateCreated] = useState(false);
   const [startDate, setStartDate] = useState<Date>();
   const [reminderList, setReminderList] = useState<IReminderEntity[]>();
+  const [averageDays, setAverageDays] = useState<number>(0);
+  const [averagePeriodLength, setAveragePeriodLength] = useState<number>(0);
 
   const isDarkMode = useColorScheme() === 'dark';
 
@@ -145,7 +140,7 @@ const App = () => {
       console.log(`onReset: cycle to be stored in history: ${cycleRecord}`);
       cycleRepo.getCycleHistory(user.uid)
         .then(history => {
-          console.log(`onReset.getCycleHistory: history snapshot: ${history}`);
+          console.log(`onReset.getCycleHistory: history snapshot: ${JSON.stringify(history.docs)}`);
           let cycleIndex = 0;
           if (history != undefined && history.docs.length > 0) {
             cycleIndex = history.docs.length;
@@ -187,8 +182,8 @@ const App = () => {
         && cycleHistory != undefined){
         const newIndex = displayedCycle?.cycleIndex-1;
         if (newIndex >= 0) {
-          const nextCycle = cycleHistory[newIndex];
-          console.log('new index', newIndex, cycleHistory[newIndex]);
+          const nextCycle = cycleHistory.find(item => item.cycleIndex == newIndex);
+          console.log('new index', newIndex, nextCycle);
           setDisplayedCycle(nextCycle);
         }
       }
@@ -198,8 +193,8 @@ const App = () => {
         && cycleHistory != undefined){
         const newIndex = displayedCycle?.cycleIndex+1;
         if (newIndex < cycleHistory.length) {
-          const nextCycle = cycleHistory[newIndex];
-          console.log('new index', newIndex, cycleHistory[newIndex]);
+          const nextCycle = cycleHistory.find(item => item.cycleIndex == newIndex);
+          console.log('new index', newIndex, nextCycle);
           setDisplayedCycle(nextCycle);
         } else if (newIndex == currentCycle?.cycleIndex){
           setDisplayedCycle(currentCycle);
@@ -270,7 +265,7 @@ const App = () => {
       .then(result => {
         console.log('onAuthStateChanged.readStartDate: result from collection', result);
         let cycle: ICycle;
-        if (result != undefined && result.exists) {
+        if (result != undefined && result.exists()) {
           const currentCycle = result.data();
           if (currentCycle != undefined) {
             cycle = {...currentCycle} as ICycle;
@@ -319,7 +314,7 @@ const App = () => {
       const list: ICycle[] = [];
       if (!snapshot.empty && snapshot.docs != null) {
         snapshot.docs.forEach(doc => {
-          if (doc.exists) {
+          if (doc.exists()) {
             const entity: ICycleRead = doc.data() as ICycleRead;
             const cycle: ICycle = {
               startDate: entity.startDate.toDate(),
@@ -339,6 +334,24 @@ const App = () => {
     .catch((error: any) => {
       console.error(error);
     });
+  }
+
+  const calculateAverages = (history: ICycle[]) => {
+    if (history == null) return;
+
+    const daysPerCycle = history.map(item => item.cycleDuration!);
+    const averageDays = daysPerCycle != null ? daysPerCycle.reduce((a, b) => a + b)/daysPerCycle.length : 0;
+    setAverageDays(averageDays);
+
+    let periodLengthsList: number[] = [];
+    history.forEach(item => {
+      if (item.periodDuration != null) {
+        periodLengthsList.push(item.periodDuration);
+      }
+    });
+
+    const averageLength = periodLengthsList != null ? periodLengthsList.reduce((a, b) => a + b)/periodLengthsList.length : 0;
+    setAveragePeriodLength(averageLength)
   }
 
   // const onGoogleSigninPressed = () => {
@@ -377,6 +390,10 @@ const App = () => {
     listenToAuthentication();
   }, []);
 
+  useEffect(() => {
+    calculateAverages(cycleHistory!);
+  }, [cycleHistory]);
+
   return (
     <SafeAreaView style={styles.appWrapper}>
         <Header title="My Cycle" profileName={user?.displayName} />
@@ -412,6 +429,8 @@ const App = () => {
           <MainDateDisplay 
             uid={user?.uid}
             currentCycle={displayedCycle} 
+            averageDays={averageDays}
+            averagePeriodLength={averagePeriodLength}
             onNewStartDate={onReset} 
             onPeriodStopped={onPeriodStopped}
             onHistorySwipe={onHistorySwipe}></MainDateDisplay>

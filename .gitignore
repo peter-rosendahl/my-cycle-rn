@@ -63,3 +63,9 @@ buck-out/
 
 # CocoaPods
 /ios/Pods/
+/ios/*
+Gemfile
+
+
+# android
+/android/app/.cxx/*
