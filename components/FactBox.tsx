@@ -9,17 +9,21 @@ import {
 type FactBoxProps = {
     title: string;
     value: string | number | undefined;
+    average: number | undefined;
     subtitle: string;
     isBigger: boolean;
     customStyles?: TextStyle
 }
 
-const FactBox: React.FC<FactBoxProps> = ({title, value, subtitle, isBigger, customStyles}) => {
+const FactBox: React.FC<FactBoxProps> = ({title, value, average, subtitle, isBigger, customStyles}) => {
     return (
         <View style={[style.box, customStyles]}>
             <Text style={[style.titleText, style.darkText]}>{title}</Text>
             <Text style={[style.valueText, style.darkText, isBigger ? style.biggerText : null]}>{value}</Text>
             <Text style={[style.subtitleText, style.darkText]}>{subtitle}</Text>
+            {average != undefined && (
+                <Text style={[style.subtitleText, style.darkText]}>{`(avg. ${average.toFixed(1)})`}</Text>
+            )}
         </View>
     )
 };

@@ -119,6 +119,9 @@ const ReminderControl: React.FC<ReminderProps> = ({currentCycle, storedReminderL
         title: `You are ${days} days in your current cycle`,
         message: `You may experience your period starting within the next ${28-days} days.`, // (required)
         date: generateDate(days, currentCycle), // in 60 secs
+        vibrate: true,
+        playSound: true,
+        soundName: "default"
       });
     }
 
