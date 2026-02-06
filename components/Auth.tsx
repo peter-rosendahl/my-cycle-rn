@@ -10,6 +10,7 @@ import {
     View,
     TouchableOpacity
 } from 'react-native';
+import { IUser } from '../core/entities/User';
 
 
 GoogleSignin.configure({
@@ -19,7 +20,7 @@ GoogleSignin.configure({
 type AuthProps = {
     auth: any,
     onSignOut: () => void,
-    user: FirebaseAuthTypes.User | undefined
+    user: IUser | undefined
 }
 
 

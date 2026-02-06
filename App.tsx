@@ -10,7 +10,6 @@
 
 import React, {useState, useEffect} from 'react';
 import {
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -19,9 +18,11 @@ import {
   View,
   TouchableOpacity
 } from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import Orientation from 'react-native-orientation-locker';
 
-import auth, {FirebaseAuthTypes} from '@react-native-firebase/auth';
+import { getApp } from '@react-native-firebase/app';
+import { getAuth, onAuthStateChanged, signOut, FirebaseAuthTypes } from '@react-native-firebase/auth';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -34,6 +35,7 @@ import Auth from './components/Auth';
 import ReminderControl from './components/ReminderControl';
 import { IReminderEntity } from './core/entities/ReminderEntity';
 import { ReminderRepository } from './core/domain/ReminderRepository';
+import { IUser } from './core/entities/User';
 
 
 
@@ -72,7 +74,7 @@ GoogleSignin.configure({
 const App = () => {
 
   const [initializing, setInitializing] = useState(true);
-  const [user, setUser] = useState<FirebaseAuthTypes.User>();
+  const [user, setUser] = useState<IUser>();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   const [currentCycle, setCurrentCycle] = useState<ICycle>();
@@ -86,6 +88,8 @@ const App = () => {
   const [averagePeriodLength, setAveragePeriodLength] = useState<number>(0);
 
   const isDarkMode = useColorScheme() === 'dark';
+  const app = getApp();
+  const auth = getAuth(app);
 
   const cycleRepo = new CycleRepository();
   const reminderRepo = new ReminderRepository();
@@ -126,7 +130,7 @@ const App = () => {
     }
   }
 
-  const onReset = (newStartDate: Date, cycleDuration: number) => {
+  const onReset = async (newStartDate: Date, cycleDuration: number) => {
     console.log(`onReset: In function, value: ${newStartDate}`);
     if (user != undefined && currentCycle != undefined) {
       // setStartDate(new Date());
@@ -137,35 +141,36 @@ const App = () => {
         endDate: newStartDate,
         cycleDuration: cycleDuration
       };
-      console.log(`onReset: cycle to be stored in history: ${cycleRecord}`);
-      cycleRepo.getCycleHistory(user.uid)
-        .then(history => {
-          console.log(`onReset.getCycleHistory: history snapshot: ${JSON.stringify(history.docs)}`);
-          let cycleIndex = 0;
-          if (history != undefined && history.docs.length > 0) {
-            cycleIndex = history.docs.length;
-          }
-          cycleRepo.addCycleToHistory(user.uid, cycleIndex, cycleRecord)
-            .then(result => {
-              console.log(`onReset.addCycleToHistory: getting cycle records...`);
-              cycleRepo.getCycleRecords(user.uid).then(records => {
-                console.log(`onReset.getCycleRecords: result: ${records}`);
-                if (records != undefined && records.docs.length > 0) {
-                  records.docs.forEach((doc, recordIndex) => {
-                    const record = doc.data() as IDateRecord;
-                    cycleRepo.addDateRecordsToHistory(user.uid, cycleIndex, recordIndex, record);
-                  })
-                }
+      console.log(`onReset: cycle to be stored in history: ${JSON.stringify(cycleRecord)}`);
+      const history = await cycleRepo.getCycleHistory(user.uid);
+      // cycleRepo.getCycleHistory(user.uid)
+      //   .then(history => {
+      //     console.log(`onReset.getCycleHistory: history snapshot: ${JSON.stringify(history.docs)}`);
+      let cycleIndex = 0;
+      if (history != undefined && history.docs.length > 0) {
+        cycleIndex = history.docs.length;
+      }
+      cycleRepo.addCycleToHistory(user.uid, cycleIndex, cycleRecord)
+        .then(result => {
+          console.log(`onReset.addCycleToHistory: getting cycle records...`);
+          cycleRepo.getCycleRecords(user.uid).then(records => {
+            console.log(`onReset.getCycleRecords: result: ${records}`);
+            if (records != undefined && records.docs.length > 0) {
+              records.docs.forEach((doc: any, recordIndex: number) => {
+                const record = doc.data() as IDateRecord;
+                cycleRepo.addDateRecordsToHistory(user.uid, cycleIndex, recordIndex, record);
               })
-              .finally(() => {
-                console.log('onReset.getCycleRecords.finally: clearing history...');
-                cycleRepo.clearRecords(user.uid, () => {
-                  console.log(`onReset.clearHistory: In callback function after clearing history...`);
-                  onStartDateConfirmed(newStartDate);
-                })
-              })
+            }
+          })
+          .finally(() => {
+            console.log('onReset.getCycleRecords.finally: clearing history...');
+            cycleRepo.clearRecords(user.uid, () => {
+              console.log(`onReset.clearHistory: In callback function after clearing history...`);
+              onStartDateConfirmed(newStartDate);
             })
+          })
         })
+      //   })
     } else if (currentCycle != undefined) {
       onStartDateConfirmed(newStartDate);
     } else {
@@ -211,7 +216,7 @@ const App = () => {
     }
   }
 
-  const readStartDate = async(user: FirebaseAuthTypes.User) => {
+  const readStartDate = async(user: IUser) => {
     if (user != undefined) {
       return cycleRepo.getCurrentCycle(user.uid);
     } else {
@@ -219,7 +224,7 @@ const App = () => {
     }
   }
 
-  const readReminders = async(user: FirebaseAuthTypes.User) => {
+  const readReminders = async(user: IUser) => {
     if (user != undefined) {
       return reminderRepo.getList(user.uid);
     } else {
@@ -251,22 +256,27 @@ const App = () => {
 
   const listenToAuthentication = () => {
     console.log('listenToAuthentication: In function...');
-    const subscriber = auth().onAuthStateChanged(onAuthStateChanged);
+    const subscriber = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        authChanged(user);
+      }
+    });
     return subscriber; // unsubscribe on unmount
   }
 
-  function onAuthStateChanged(user: any) {
-    console.log('onAuthStateChanged: In function', user);
+  function authChanged(user: any) {
     if (user != undefined) {
+      const {uid, displayName, email} = user;
+      const thisUser = { uid, displayName, email };
       if (isAuthenticated) return;
       setIsAuthenticated(true);
-      setUser(user);
-      readStartDate(user)
+      setUser(thisUser);
+      readStartDate(thisUser)
       .then(result => {
         console.log('onAuthStateChanged.readStartDate: result from collection', result);
         let cycle: ICycle;
         if (result != undefined && result.exists()) {
-          const currentCycle = result.data();
+          const currentCycle: any = result.data();
           if (currentCycle != undefined) {
             cycle = {...currentCycle} as ICycle;
             cycle.startDate = currentCycle.startDate.toDate();
@@ -279,10 +289,10 @@ const App = () => {
             setCurrentCycle(cycle);
             setDisplayedCycle(cycle);
             setIsStartDateCreated(true);
-            tryGetCycleHistory(user.uid, cycle);
+            tryGetCycleHistory(thisUser.uid, cycle);
           }
         }
-        readReminders(user).then(reminderResult => {
+        readReminders(thisUser).then(reminderResult => {
           if (reminderResult != undefined && reminderResult.docs.length > 0) {
             const list: IReminderEntity[] = reminderResult.docs.map(doc => doc.data() as IReminderEntity);
             setReminderList(list);
@@ -293,7 +303,7 @@ const App = () => {
       })
       .catch((error: any) => {
         if (error.includes('denied')) {
-          signOut();
+          onSignOut();
         }
       })
     } else {
@@ -313,7 +323,7 @@ const App = () => {
       }
       const list: ICycle[] = [];
       if (!snapshot.empty && snapshot.docs != null) {
-        snapshot.docs.forEach(doc => {
+        snapshot.docs.forEach((doc: any) => {
           if (doc.exists()) {
             const entity: ICycleRead = doc.data() as ICycleRead;
             const cycle: ICycle = {
@@ -378,8 +388,8 @@ const App = () => {
   //   return auth().signInWithCredential(googleCredential);
   // }
 
-  const signOut = () => {
-    auth().signOut().then(() => {
+  const onSignOut = () => {
+    signOut(auth).then(() => {
       setUser(undefined);
     });
   }
@@ -403,7 +413,7 @@ const App = () => {
             storedReminderList={reminderList} 
             onReminderConfirmed={(item: IReminderEntity | null) => storeReminder(item)} />
         }
-        <Auth auth={auth} onSignOut={signOut} user={user} />
+        <Auth auth={auth} onSignOut={onSignOut} user={user} />
         {/* <View style={styles.signInSection}>
           {user == null && 
             <View style={{maxWidth: 300, display: "flex", flexDirection: "column", justifyContent: "flex-start", alignItems: "center"}}>
