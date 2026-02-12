@@ -310,40 +310,48 @@ const MainDateDisplay: React.FC<MainDateProps> = ({uid, currentCycle, averageDay
                     animationType='fade'
                     transparent={true}
                     visible={modalDisplayed == EModalType.PeriodStopped || modalDisplayed == EModalType.NewCycle}>
-                        <TouchableHighlight underlayColor={"#ECDDFF00"} style={modalStyle.centeredView} onPress={() => setModalDisplayed(undefined)}>
-                            <TouchableWithoutFeedback>
-                                <View style={modalStyle.modalWrapper}>
-                                    {modalDisplayed == EModalType.PeriodStopped &&
-                                        <DatePrompt
-                                            buttonText='Confirm'
-                                            description='Please confirm when your period stopped.'
-                                            onConfirmed={(date) => confirmMainDateUpdate(date, EMainDateType.PeriodStopped)}></DatePrompt>
-                                    }
-                                    {modalDisplayed == EModalType.NewCycle &&
-                                        <DatePrompt
-                                            buttonText='Confirm'
-                                            description='Please confirm the date where your new cycle started'
-                                            onConfirmed={(date) => confirmMainDateUpdate(date, EMainDateType.NewCycle)}></DatePrompt>
-                                    }
-                                </View>
+                        <View style={modalStyle.centeredView}>
+                            <TouchableWithoutFeedback
+                                onPress={() => setModalDisplayed(undefined)}>
+                                <View style={StyleSheet.absoluteFillObject} />
                             </TouchableWithoutFeedback>
-                        </TouchableHighlight>
+                            <View style={modalStyle.modalWrapper}>
+                                {modalDisplayed == EModalType.PeriodStopped &&
+                                    <DatePrompt
+                                        buttonText='Confirm'
+                                        description='Please confirm when your period stopped.'
+                                        onConfirmed={(date) => confirmMainDateUpdate(date, EMainDateType.PeriodStopped)}></DatePrompt>
+                                }
+                                {modalDisplayed == EModalType.NewCycle &&
+                                    <DatePrompt
+                                        buttonText='Confirm'
+                                        description='Please confirm the date where your new cycle started'
+                                        onConfirmed={(date) => confirmMainDateUpdate(date, EMainDateType.NewCycle)}></DatePrompt>
+                                }
+                            </View>
+                        </View>
+                        {/* <TouchableHighlight underlayColor={"#ECDDFF00"} style={modalStyle.centeredView} onPress={() => setModalDisplayed(undefined)}> */}
+                        {/* </TouchableHighlight> */}
                 </Modal>
                 <Modal
                     animationType='fade'
                     transparent={true}
                     visible={
                         modalDisplayed == EModalType.Event}>
-                        <TouchableHighlight underlayColor={"#ECDDFF00"} style={modalStyle.centeredView} onPress={() => setModalDisplayed(undefined)}>
-                            <TouchableWithoutFeedback>
-                                <View style={modalStyle.modalWrapper}>
-                                    <EventForm 
-                                        symptomList={symptoms} 
-                                        onSubmit={onEventFormSumbitted}
-                                        onNewSymptomSubmitted={onNewSymptomNameConfirmed}/>
-                                </View>
+                        <View style={modalStyle.centeredView}>
+                            <TouchableWithoutFeedback
+                                onPress={() => setModalDisplayed(undefined)}>
+                                <View style={StyleSheet.absoluteFillObject}/>
                             </TouchableWithoutFeedback>
-                        </TouchableHighlight>
+                            <View style={modalStyle.modalWrapper}>
+                                <EventForm 
+                                    symptomList={symptoms} 
+                                    onSubmit={onEventFormSumbitted}
+                                    onNewSymptomSubmitted={onNewSymptomNameConfirmed}/>
+                            </View>
+                        </View>
+                        {/* <TouchableHighlight underlayColor={"#ECDDFF00"} style={modalStyle.centeredView} onPress={() => setModalDisplayed(undefined)}> */}
+                        {/* </TouchableHighlight> */}
                 </Modal>
             </View>
     )

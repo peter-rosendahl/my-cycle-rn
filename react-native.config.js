@@ -1,3 +1,3 @@
 module.exports = {
-  assets: ['./node_modules/react-native-vector-icons/Fonts/MaterialIcons.ttf'],
-};
+    assets: ['./node_modules/react-native-vector-icons/Fonts/MaterialIcons.ttf']
+}

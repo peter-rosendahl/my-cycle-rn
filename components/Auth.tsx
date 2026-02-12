@@ -77,7 +77,7 @@ const styles = StyleSheet.create({
     signInSection: {
       position: "absolute",
       right: 16,
-      top: 16,
+      top: 60,
       display: "flex",
       flexDirection: "column",
       alignItems: "center",

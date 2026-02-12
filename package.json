@@ -32,6 +32,7 @@
     "react-native-push-notification": "^8.1.1",
     "react-native-safe-area-context": "^5.6.1",
     "react-native-swipe-gestures": "^1.0.5",
+    "react-native-ui-datepicker": "^3.1.2",
     "react-native-vector-icons": "^10.3.0"
   },
   "devDependencies": {

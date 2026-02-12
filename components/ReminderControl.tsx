@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
     signInSection: {
       position: "absolute",
       left: 16,
-      top: 16,
+      top: 60,
       display: "flex",
       flexDirection: "column",
       alignItems: "center",

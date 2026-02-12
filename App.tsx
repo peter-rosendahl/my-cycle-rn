@@ -16,9 +16,10 @@ import {
   Text,
   useColorScheme,
   View,
-  TouchableOpacity
+  TouchableOpacity,
+  StatusBarStyle
 } from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
+import {SafeAreaView, SafeAreaProvider} from 'react-native-safe-area-context';
 import Orientation from 'react-native-orientation-locker';
 
 import { getApp } from '@react-native-firebase/app';
@@ -42,6 +43,10 @@ import { IUser } from './core/entities/User';
 GoogleSignin.configure({
   webClientId: "888189098954-hjuhcb54ovpens07io0jj56jjukkna3r.apps.googleusercontent.com"
 })
+
+
+const STYLES = ['default', 'dark-content', 'light-content'] as const;
+const TRANSITIONS = ['fade', 'slide', 'none'] as const;
 
 // const Section: React.FC<{
 //   title: string;
@@ -86,6 +91,34 @@ const App = () => {
   const [reminderList, setReminderList] = useState<IReminderEntity[]>();
   const [averageDays, setAverageDays] = useState<number>(0);
   const [averagePeriodLength, setAveragePeriodLength] = useState<number>(0);
+  const [hidden, setHidden] = useState(false);
+  const [statusBarStyle, setStatusBarStyle] = useState<StatusBarStyle>(
+    STYLES[1],
+  );
+
+  const [statusBarTransition, setStatusBarTransition] = useState<
+    'fade' | 'slide' | 'none'
+  >(TRANSITIONS[0]);
+
+  const changeStatusBarVisibility = () => setHidden(!hidden);
+
+  const changeStatusBarStyle = () => {
+    const styleId = STYLES.indexOf(statusBarStyle) + 1;
+    if (styleId === STYLES.length) {
+      setStatusBarStyle(STYLES[0]);
+    } else {
+      setStatusBarStyle(STYLES[styleId]);
+    }
+  };
+
+  const changeStatusBarTransition = () => {
+    const transition = TRANSITIONS.indexOf(statusBarTransition) + 1;
+    if (transition === TRANSITIONS.length) {
+      setStatusBarTransition(TRANSITIONS[0]);
+    } else {
+      setStatusBarTransition(TRANSITIONS[transition]);
+    }
+  };
 
   const isDarkMode = useColorScheme() === 'dark';
   const app = getApp();
@@ -405,47 +438,56 @@ const App = () => {
   }, [cycleHistory]);
 
   return (
-    <SafeAreaView style={styles.appWrapper}>
-        <Header title="My Cycle" profileName={user?.displayName} />
-        {user != undefined &&
-          <ReminderControl 
-            currentCycle={currentCycle} 
-            storedReminderList={reminderList} 
-            onReminderConfirmed={(item: IReminderEntity | null) => storeReminder(item)} />
-        }
-        <Auth auth={auth} onSignOut={onSignOut} user={user} />
-        {/* <View style={styles.signInSection}>
-          {user == null && 
-            <View style={{maxWidth: 300, display: "flex", flexDirection: "column", justifyContent: "flex-start", alignItems: "center"}}>
-              <Text style={styles.googleButtonText}>Please sign in if you want your information to be stored online.</Text>
-              <TouchableOpacity style={styles.googleButton} onPress={onGoogleSigninPressed}>
-                <Text style={styles.googleButtonText}>Sign in with Google</Text>
-              </TouchableOpacity>
-            </View>
+    <SafeAreaProvider>
+      <SafeAreaView style={styles.appWrapper}>
+          <StatusBar translucent={false}
+            animated={true}
+            backgroundColor="transparent"
+            barStyle={statusBarStyle}
+            showHideTransition={statusBarTransition}
+            hidden={hidden}
+          />
+          <Header title="My Cycle" profileName={user?.displayName} />
+          {user != undefined &&
+            <ReminderControl 
+              currentCycle={currentCycle} 
+              storedReminderList={reminderList} 
+              onReminderConfirmed={(item: IReminderEntity | null) => storeReminder(item)} />
           }
-          {user != undefined && 
-            <View>
-              <Text style={styles.googleButtonText}>Signed in as: {user.displayName}</Text>
-              <TouchableOpacity style={styles.googleButton} onPress={signOut}>
-                <Text style={styles.googleButtonText}>Sign out</Text>
-              </TouchableOpacity>
-            </View>
+          <Auth auth={auth} onSignOut={onSignOut} user={user} />
+          {/* <View style={styles.signInSection}>
+            {user == null && 
+              <View style={{maxWidth: 300, display: "flex", flexDirection: "column", justifyContent: "flex-start", alignItems: "center"}}>
+                <Text style={styles.googleButtonText}>Please sign in if you want your information to be stored online.</Text>
+                <TouchableOpacity style={styles.googleButton} onPress={onGoogleSigninPressed}>
+                  <Text style={styles.googleButtonText}>Sign in with Google</Text>
+                </TouchableOpacity>
+              </View>
+            }
+            {user != undefined && 
+              <View>
+                <Text style={styles.googleButtonText}>Signed in as: {user.displayName}</Text>
+                <TouchableOpacity style={styles.googleButton} onPress={signOut}>
+                  <Text style={styles.googleButtonText}>Sign out</Text>
+                </TouchableOpacity>
+              </View>
+            }
+          </View> */}
+          {!isStartDateCreated && 
+            <Prologue onStartDateConfirmed={onStartDateConfirmed}></Prologue>
           }
-        </View> */}
-        {!isStartDateCreated && 
-          <Prologue onStartDateConfirmed={onStartDateConfirmed}></Prologue>
-        }
-        {isStartDateCreated && displayedCycle != undefined &&
-          <MainDateDisplay 
-            uid={user?.uid}
-            currentCycle={displayedCycle} 
-            averageDays={averageDays}
-            averagePeriodLength={averagePeriodLength}
-            onNewStartDate={onReset} 
-            onPeriodStopped={onPeriodStopped}
-            onHistorySwipe={onHistorySwipe}></MainDateDisplay>
-        }
-    </SafeAreaView>
+          {isStartDateCreated && displayedCycle != undefined &&
+            <MainDateDisplay 
+              uid={user?.uid}
+              currentCycle={displayedCycle} 
+              averageDays={averageDays}
+              averagePeriodLength={averagePeriodLength}
+              onNewStartDate={onReset} 
+              onPeriodStopped={onPeriodStopped}
+              onHistorySwipe={onHistorySwipe}></MainDateDisplay>
+          }
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 };
 

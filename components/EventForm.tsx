@@ -1,15 +1,19 @@
 import React, {useState} from 'react';
 import {
     View,
+    ScrollView,
     Text,
     StyleSheet,
     TouchableOpacity,
+    TouchableHighlight,
     TextStyle,
     TextInput
 } from 'react-native';
 import DatePrompt from './DatePrompt';
 import { modalStyle } from '../core/styles/ModalStyle';
 import { IDateRecord } from '../core/entities/CycleEntity';
+import { buttonStyle } from "../core/styles/buttonStyles";
+import Icon from 'react-native-vector-icons/MaterialIcons';
 
 type EventFormProps = {
     symptomList: string[],
@@ -21,6 +25,7 @@ const EventForm: React.FC<EventFormProps> = ({symptomList, onSubmit, onNewSympto
 
     const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
     const [customSymptom, setCustomSymptom] = useState<string>('');
+    const [page, setPage] = useState<number>(1);
     const [eventDate, setEventDate] = useState(new Date());
 
     const onSymptomToggle = (symptom: string) => {
@@ -56,31 +61,62 @@ const EventForm: React.FC<EventFormProps> = ({symptomList, onSubmit, onNewSympto
         }
     }
 
+    const goToPage = (pageNumber: number) => {
+        setPage(pageNumber);
+    }
+
     return (
         <View style={modalStyle.modalInner}>
-            <Text style={{color: "#DEC4FFFF", fontSize: 24, fontWeight: "600"}}>Register Event</Text>
-            <Text style={[style.titleText, style.darkText]}>Please choose an option below that describes what you're experiencing most accurately.</Text>
-            <View style={{display: "flex", flexDirection: "row", flexWrap: "wrap", justifyContent: "flex-start"}}>
-                {symptomList && symptomList.map((symptom, index) => 
-                    <View key={index}>
-                        <TouchableOpacity 
-                            style={[style.option, selectedSymptoms.includes(symptom) ? style.selected : style.unselected]} 
-                            onPress={() => onSymptomToggle(symptom)}>
-                            <Text style={{color: "#333", fontSize: 10}}>{symptom}</Text>
-                        </TouchableOpacity>
+            {page == 1 &&
+                <View>
+                    <Text style={{color: "#DEC4FFFF", fontSize: 24, fontWeight: "600", textAlign: "center"}}>Register Event</Text>
+                    <Text style={[style.titleText, style.darkText]}>(page 1 of 2)</Text>
+                    <Text style={[style.titleText, style.darkText]}>Please choose an option below that describes what you're experiencing most accurately.</Text>
+                    <View style={{display: "flex", flexDirection: "column", flexWrap: "wrap", justifyContent: "center"}}>
+                        {symptomList &&
+                            <ScrollView persistentScrollbar={true} contentContainerStyle={{ paddingVertical: 20}} style={{maxHeight: 200, height: 50, width: "100%", backgroundColor: "#ffffff"}}>
+                                <View style={{display: "flex", width: "100%", flexDirection: "row", flexWrap: "wrap", justifyContent: "center"}}>
+                                    {symptomList && symptomList.map((symptom, index) => 
+                                        <View key={index}>
+                                            <TouchableOpacity 
+                                                style={[style.option, selectedSymptoms.includes(symptom) ? style.selected : style.unselected]} 
+                                                onPress={() => onSymptomToggle(symptom)}>
+                                                <Text style={{color: "#333", fontSize: 10}}>{symptom}</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    )}
+                                </View>
+                            </ScrollView>
+                        }
+                        <View style={{display: 'flex', flexDirection: 'column', marginVertical: 32}}>
+                            <Text style={[style.titleText, style.darkText]}>or describe new sympton here:</Text>
+                            <TextInput multiline={true} placeholder='New symptom' placeholderTextColor="#999999" onChangeText={onCustomTextChanged} style={[style.textInput]}></TextInput>
+                        </View>
                     </View>
-                )}
-                <View style={{display: 'flex', flexDirection: 'column', marginVertical: 32}}>
-                    <Text style={[style.titleText, style.darkText]}>or describe new sympton here:</Text>
-                    <TextInput multiline={true} placeholder='New symptom' placeholderTextColor="#999999" onChangeText={onCustomTextChanged} style={[style.textInput]}></TextInput>
+                    <TouchableHighlight underlayColor={"#ECDDFF00"} style={buttonStyle.primaryBtn} onPress={() => goToPage(2)}>
+                        <Text style={[buttonStyle.buttonText, {fontWeight: "600"}]}>Proceed</Text>
+                    </TouchableHighlight>
                 </View>
-            </View>
-            <View style={{borderBottomColor: "#999999FF", marginVertical:10, borderBottomWidth: 1, width: 180}}></View>
-            <DatePrompt
-                buttonText="Confirm Date"
-                description='Please confirm the date where the event occurred.'
-                onConfirmed={onDateConfirmed}></DatePrompt>
-            
+            }
+            {page == 2 &&
+                <View>
+                    <View style={{display: "flex", flexDirection: "row", alignItems: "center"}}>
+                        <TouchableHighlight underlayColor={"#ECDDFF00"} style={{width: 25}} onPress={() => goToPage(1)}>
+                            <Icon style={{color: "#333333", fontSize: 24}} name="arrow-back"></Icon>
+                        </TouchableHighlight>
+                        <Text style={{color: "#DEC4FFFF", fontSize: 24, fontWeight: "600", textAlign: "center"}}>Register Event</Text>
+                    </View>
+                    <Text style={[style.titleText, style.darkText]}>(page 2 of 2)</Text>
+                    <Text style={[style.titleText, style.darkText]}>Please select at which date the even occurred.</Text>
+                    <DatePrompt
+                        buttonText="Confirm Date"
+                        description='Please confirm the date where the event occurred.'
+                        onConfirmed={onDateConfirmed}></DatePrompt>
+                        
+                </View>
+                
+            }
+            {/* <View style={{borderBottomColor: "#999999FF", marginVertical:10, borderBottomWidth: 1, width: 180}}></View> */}
         </View>
     )
 };
@@ -92,7 +128,7 @@ const style = StyleSheet.create({
         display: "flex",
         padding: 10,
         marginHorizontal: 5,
-        width: 100,
+        width: 128,
         flexDirection: "column",
         justifyContent: "center",
         alignItems: "center",

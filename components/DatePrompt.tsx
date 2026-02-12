@@ -6,23 +6,36 @@ import {
     StyleSheet,
     TouchableOpacity
 } from 'react-native';
-import DatePicker from 'react-native-date-picker';
+// import DatePicker from 'react-native-date-picker';
+import DateTimePicker, {DateType, useDefaultStyles} from 'react-native-ui-datepicker';
 import { buttonStyle } from '../core/styles/buttonStyles';
 
 const DatePrompt: React.FC<{description: string, buttonText:string, onConfirmed: (date: Date) => void}> = ({description, buttonText, onConfirmed}) => {
 
-    const [date, setDate] = useState(new Date());
+    const defaultStyles = useDefaultStyles();
+    const [date, setDate] = useState<Date>();
     const [open, setOpen] = useState(false);
 
     return (
         <View style={style.wrapper}>
             <Text style={style.description}>{description}</Text>
-            <DatePicker 
+            <DateTimePicker
+                mode="single"
+                date={date}
+                onChange={({ date }) =>  setDate(new Date(date!.toLocaleString()))}
+                styles={{
+                    ...defaultStyles,
+                    today: { backgroundColor: "#eeeeee", borderRadius: 100},
+                    selected: { backgroundColor: "#ecddff", borderRadius: 100 },
+                    selected_label: { color: "#333333"}
+                }}
+            />
+            {/* <DatePicker 
                 style={style.dateInput}
                 date={date}
                 textColor='#666'
                 mode="date"
-                onDateChange={setDate} />
+                onDateChange={setDate} /> */}
             {/* <TextInput multiline={true} onChangeText={(e) => setDate(e)} style={style.dateInput} /> */}
             <TouchableOpacity style={buttonStyle.primaryBtn} onPress={(e) => onConfirmed(date)}>
                 <Text style={buttonStyle.buttonText}>{buttonText}</Text>
