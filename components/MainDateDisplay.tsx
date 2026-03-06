@@ -219,6 +219,7 @@ const MainDateDisplay: React.FC<MainDateProps> = ({uid, currentCycle, averageDay
     }
 
     const confirmMainDateUpdate = (date: Date, type: EMainDateType) => {
+        console.log('MainDateDisplay.confirmMainDateUpdate: ', date, type);
         const daysInCycle = calculateDifference(currentCycle.startDate, date);
         if (type == EMainDateType.PeriodStopped) {
             onPeriodStopped(date, daysInCycle);
@@ -320,18 +321,18 @@ const MainDateDisplay: React.FC<MainDateProps> = ({uid, currentCycle, averageDay
                                     <DatePrompt
                                         buttonText='Confirm'
                                         description='Please confirm when your period stopped.'
+                                        minDate={currentCycle.startDate}
                                         onConfirmed={(date) => confirmMainDateUpdate(date, EMainDateType.PeriodStopped)}></DatePrompt>
                                 }
                                 {modalDisplayed == EModalType.NewCycle &&
                                     <DatePrompt
                                         buttonText='Confirm'
                                         description='Please confirm the date where your new cycle started'
+                                        minDate={currentCycle.startDate}
                                         onConfirmed={(date) => confirmMainDateUpdate(date, EMainDateType.NewCycle)}></DatePrompt>
                                 }
                             </View>
                         </View>
-                        {/* <TouchableHighlight underlayColor={"#ECDDFF00"} style={modalStyle.centeredView} onPress={() => setModalDisplayed(undefined)}> */}
-                        {/* </TouchableHighlight> */}
                 </Modal>
                 <Modal
                     animationType='fade'
@@ -346,12 +347,11 @@ const MainDateDisplay: React.FC<MainDateProps> = ({uid, currentCycle, averageDay
                             <View style={modalStyle.modalWrapper}>
                                 <EventForm 
                                     symptomList={symptoms} 
+                                    minDate={currentCycle.startDate}
                                     onSubmit={onEventFormSumbitted}
                                     onNewSymptomSubmitted={onNewSymptomNameConfirmed}/>
                             </View>
                         </View>
-                        {/* <TouchableHighlight underlayColor={"#ECDDFF00"} style={modalStyle.centeredView} onPress={() => setModalDisplayed(undefined)}> */}
-                        {/* </TouchableHighlight> */}
                 </Modal>
             </View>
     )

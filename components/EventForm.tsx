@@ -17,11 +17,12 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 
 type EventFormProps = {
     symptomList: string[],
+    minDate: Date,
     onSubmit: (symptomRecord: IDateRecord) => void,
     onNewSymptomSubmitted: (symptom: string) => void
 }
 
-const EventForm: React.FC<EventFormProps> = ({symptomList, onSubmit, onNewSymptomSubmitted}) => {
+const EventForm: React.FC<EventFormProps> = ({symptomList, minDate, onSubmit, onNewSymptomSubmitted}) => {
 
     const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
     const [customSymptom, setCustomSymptom] = useState<string>('');
@@ -111,6 +112,7 @@ const EventForm: React.FC<EventFormProps> = ({symptomList, onSubmit, onNewSympto
                     <DatePrompt
                         buttonText="Confirm Date"
                         description='Please confirm the date where the event occurred.'
+                        minDate={minDate}
                         onConfirmed={onDateConfirmed}></DatePrompt>
                         
                 </View>

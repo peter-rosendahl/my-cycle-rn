@@ -10,11 +10,25 @@ import {
 import DateTimePicker, {DateType, useDefaultStyles} from 'react-native-ui-datepicker';
 import { buttonStyle } from '../core/styles/buttonStyles';
 
-const DatePrompt: React.FC<{description: string, buttonText:string, onConfirmed: (date: Date) => void}> = ({description, buttonText, onConfirmed}) => {
+const DatePrompt: React.FC<{description: string, buttonText:string, minDate: Date, onConfirmed: (date: Date) => void}> = ({description, buttonText, minDate, onConfirmed}) => {
 
+    const today = new Date();
     const defaultStyles = useDefaultStyles();
     const [date, setDate] = useState<Date>();
     const [open, setOpen] = useState(false);
+
+    const onDateChange = (date: DateType) => {
+        console.log('DatePrompt.onDateChange: ', date);
+        const newDate: Date = date as Date;
+        setDate(newDate);
+    }
+
+    const onConfirmDate = () => {
+        console.log('DatePrompt.onConfirmDate: ', date);
+        if (date != null) {
+            onConfirmed(date);
+        }
+    }
 
     return (
         <View style={style.wrapper}>
@@ -22,7 +36,9 @@ const DatePrompt: React.FC<{description: string, buttonText:string, onConfirmed:
             <DateTimePicker
                 mode="single"
                 date={date}
-                onChange={({ date }) =>  setDate(new Date(date!.toLocaleString()))}
+                minDate={minDate}
+                maxDate={today}
+                onChange={({ date }) => onDateChange(date)}
                 styles={{
                     ...defaultStyles,
                     today: { backgroundColor: "#eeeeee", borderRadius: 100},
@@ -37,7 +53,7 @@ const DatePrompt: React.FC<{description: string, buttonText:string, onConfirmed:
                 mode="date"
                 onDateChange={setDate} /> */}
             {/* <TextInput multiline={true} onChangeText={(e) => setDate(e)} style={style.dateInput} /> */}
-            <TouchableOpacity style={buttonStyle.primaryBtn} onPress={(e) => onConfirmed(date)}>
+            <TouchableOpacity style={buttonStyle.primaryBtn} onPress={onConfirmDate}>
                 <Text style={buttonStyle.buttonText}>{buttonText}</Text>
             </TouchableOpacity>
         </View>
