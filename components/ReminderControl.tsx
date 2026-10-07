@@ -43,7 +43,7 @@ const ReminderControl: React.FC<ReminderProps> = ({currentCycle, storedReminderL
             PushNotification.configure({
                 // (optional) Called when Token is generated (iOS and Android)
                 onRegister: function (token) {
-                console.log("TOKEN:", token);
+                  console.log("PUSHNOTIFICATION TOKEN:", token);
                 },
             
                 // (required) Called when a remote is received or opened, or local notification is opened
@@ -90,9 +90,11 @@ const ReminderControl: React.FC<ReminderProps> = ({currentCycle, storedReminderL
             if (storedReminderList != undefined) {
               if (storedReminderList.length > 0) {
                 setDays(storedReminderList[0].numberOfDays.toString());
-                if (notifications.length == 0) {
-                  scheduleNotification(storedReminderList[0].numberOfDays);
-                }
+                clearNotifications();
+                scheduleNotification(storedReminderList[0].numberOfDays);
+                // if (notifications.length == 0) {
+                //   scheduleNotification(storedReminderList[0].numberOfDays);
+                // }
               } else {
                 clearNotifications();
               }
@@ -129,6 +131,7 @@ const ReminderControl: React.FC<ReminderProps> = ({currentCycle, storedReminderL
       const timestamp: number = cycle.startDate.getTime();
       const newDate = new Date(timestamp + (TimeInMs.Day * days)).setHours(9, 0, 0);
       const alertDate = new Date(newDate);
+      console.log('generateDate', alertDate, newDate, timestamp);
       return alertDate;
     }
 

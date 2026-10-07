@@ -1,4 +1,4 @@
-import { FirebaseAuthTypes } from '@react-native-firebase/auth';
+import { GoogleAuthProvider } from '@react-native-firebase/auth';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import React, {useState, useEffect} from 'react';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -43,12 +43,13 @@ const Auth: React.FC<AuthProps> = ({auth, onSignOut, user}) => {
         const {  data, type } = await GoogleSignin.signIn();
 
         console.log('signInWithGoogle: type ', type, ', data', data?.idToken);
+        // console.log('auth', auth, 'GoogleAuthProvider', Object.keys(auth.GoogleAuthProvider));
         // Create a Google credential with the token
-        const googleCredential = auth.GoogleAuthProvider.credential(data?.idToken);
+        const googleCredential = GoogleAuthProvider.credential(data?.idToken);
 
         console.log('signInWithGoogle: signing in with credential', googleCredential);
         // Sign-in the user with the credential
-        return auth().signInWithCredential(googleCredential);
+        return auth.signInWithCredential(googleCredential);
     }
 
     return (
